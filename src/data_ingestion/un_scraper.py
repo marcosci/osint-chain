@@ -35,100 +35,190 @@ class UNDataScraper:
         """
         datasets = []
         
-        # Known direct CSV links from UN Statistical Yearbook
+        # Known direct CSV links from UN Statistical Yearbook (SYB67, Updated Nov 2024)
         syb_base = "https://data.un.org/_Docs/SYB/CSV"
         
         known_datasets = [
+            # Population
             {
                 "name": "Population, Surface Area and Density",
-                "code": "SYB65_1_202209_Population, Surface Area and Density.csv",
+                "code": "SYB67_1_202411_Population, Surface Area and Density.csv",
                 "category": "Demographics"
             },
             {
+                "name": "International Migrants and Refugees",
+                "code": "SYB67_327_202411_International Migrants and Refugees.csv",
+                "category": "Demographics"
+            },
+            {
+                "name": "Population Growth, Fertility and Mortality Indicators",
+                "code": "SYB67_246_202411_Population Growth, Fertility and Mortality Indicators.csv",
+                "category": "Demographics"
+            },
+            {
+                "name": "Population Growth Rates in Urban areas and Capital cities",
+                "code": "SYB61_253_Population Growth Rates in Urban areas and Capital cities.csv",
+                "category": "Demographics"
+            },
+            # National Accounts
+            {
                 "name": "GDP and GDP Per Capita",
-                "code": "SYB65_246_202209_GDP and GDP Per Capita.csv",
+                "code": "SYB67_230_202411_GDP and GDP Per Capita.csv",
                 "category": "Economy"
             },
             {
                 "name": "Gross Value Added by Economic Activity",
-                "code": "SYB65_264_202209_Gross Value Added by Kind of Economic Activity.csv",
+                "code": "SYB67_153_202411_Gross Value Added by Economic Activity.csv",
                 "category": "Economy"
             },
-            {
-                "name": "Labour Force and Unemployment",
-                "code": "SYB65_329_202209_Labour Force and Unemployment.csv",
-                "category": "Employment"
-            },
+            # Education
             {
                 "name": "Education",
-                "code": "SYB65_319_202209_Education.csv",
+                "code": "SYB67_309_202411_Education.csv",
                 "category": "Education"
             },
             {
-                "name": "Health Personnel",
-                "code": "SYB65_325_202209_Health Personnel.csv",
-                "category": "Health"
+                "name": "Teaching Staff in education",
+                "code": "SYB67_323_202411_Teaching Staff in education.csv",
+                "category": "Education"
             },
             {
-                "name": "Expenditure on Health",
-                "code": "SYB65_328_202209_Expenditure on Health.csv",
-                "category": "Health"
+                "name": "Public expenditure on education and access to computers",
+                "code": "SYB67_245_202411_Public expenditure on education and access to computers.csv",
+                "category": "Education"
+            },
+            # Labour Market
+            {
+                "name": "Labour Force and Unemployment",
+                "code": "SYB67_329_202411_Labour Force and Unemployment.csv",
+                "category": "Employment"
             },
             {
-                "name": "International Trade",
-                "code": "SYB65_128_202209_International merchandise trade.csv",
+                "name": "Employment",
+                "code": "SYB67_200_202411_Employment.csv",
+                "category": "Employment"
+            },
+            # Price and Production
+            {
+                "name": "Consumer Price Index",
+                "code": "SYB67_128_202411_Consumer Price Index.csv",
+                "category": "Economy"
+            },
+            {
+                "name": "Agricultural Index",
+                "code": "SYB67_12_202411_Agricultural Index.csv",
+                "category": "Agriculture"
+            },
+            # International Trade
+            {
+                "name": "Total Imports Exports and Balance of Trade",
+                "code": "SYB67_123_202411_Total Imports Exports and Balance of Trade.csv",
                 "category": "Trade"
             },
             {
-                "name": "Agriculture Production Indices",
-                "code": "SYB65_154_202209_Agricultural Production Indices.csv",
-                "category": "Agriculture"
+                "name": "Major Trading Partners",
+                "code": "SYB67_330_202411_Major Trading Partners.csv",
+                "category": "Trade"
             },
-            # Energy dataset has server issues, commenting out
-            # {
-            #     "name": "Energy Production and Supply",
-            #     "code": "SYB65_218_202209_Production, trade and supply of energy.csv",
-            #     "category": "Energy"
-            # },
+            # Energy
             {
-                "name": "CO2 Emissions",
-                "code": "SYB65_226_202209_CO2 emission estimates.csv",
-                "category": "Environment"
+                "name": "Production, Trade and Supply of Energy",
+                "code": "SYB67_263_202411_Production, Trade and Supply of Energy.csv",
+                "category": "Energy"
             },
+            # Crime
             {
-                "name": "Tourist Arrivals",
-                "code": "SYB65_176_202209_Tourist-visitors arrivals and tourism expenditure.csv",
-                "category": "Tourism"
+                "name": "Intentional homicides and other crimes",
+                "code": "SYB67_328_202411_Intentional homicides and other crimes.csv",
+                "category": "Crime"
             },
+            # Gender
             {
-                "name": "Mobile Cellular and Internet Users",
-                "code": "SYB65_314_202209_Telecommunications.csv",
-                "category": "Technology"
+                "name": "Seats held by women in Parliament",
+                "code": "SYB67_317_202411_Seats held by women in Parliament.csv",
+                "category": "Gender"
             },
             {
-                "name": "R&D Personnel and Expenditure",
-                "code": "SYB65_302_202209_Research and Development.csv",
+                "name": "Ratio of girls to boys in education",
+                "code": "SYB67_319_202411_Ratio of girls to boys in education.csv",
+                "category": "Gender"
+            },
+            # Health
+            {
+                "name": "Health Personnel",
+                "code": "SYB67_154_202411_Health Personnel.csv",
+                "category": "Health"
+            },
+            {
+                "name": "Expenditure on health",
+                "code": "SYB67_325_202411_Expenditure on health.csv",
+                "category": "Health"
+            },
+            # Science and Technology
+            {
+                "name": "Research and Development Expenditure and Staff",
+                "code": "SYB67_285_202411_Research and Development Expenditure and Staff.csv",
                 "category": "Science"
             },
             {
                 "name": "Patents",
-                "code": "SYB65_309_202209_Patents.csv",
+                "code": "SYB67_264_202411_Patents.csv",
                 "category": "Innovation"
             },
+            # Finance
             {
-                "name": "Government Finance",
-                "code": "SYB65_286_202209_Government Finance.csv",
+                "name": "Balance of Payments",
+                "code": "SYB67_125_202411_Balance of Payments.csv",
                 "category": "Finance"
             },
             {
                 "name": "Exchange Rates",
-                "code": "SYB65_283_202209_Exchange rates.csv",
+                "code": "SYB67_130_202411_Exchange Rates.csv",
                 "category": "Finance"
             },
+            # Environment
             {
-                "name": "Consumer Price Indices",
-                "code": "SYB65_274_202209_Consumer Price Indices.csv",
-                "category": "Economy"
+                "name": "Land",
+                "code": "SYB67_145_202411_Land.csv",
+                "category": "Environment"
+            },
+            {
+                "name": "Carbon Dioxide Emission Estimates",
+                "code": "SYB67_310_202411_Carbon Dioxide Emission Estimates.csv",
+                "category": "Environment"
+            },
+            {
+                "name": "Water and Sanitation Services",
+                "code": "SYB67_315_202411_Water and Sanitation Services.csv",
+                "category": "Environment"
+            },
+            {
+                "name": "Threatened Species",
+                "code": "SYB67_313_202411_Threatened Species.csv",
+                "category": "Environment"
+            },
+            # Communication
+            {
+                "name": "Internet Usage",
+                "code": "SYB67_314_202411_Internet Usage.csv",
+                "category": "Technology"
+            },
+            # Tourism
+            {
+                "name": "Tourist-Visitors Arrival and Expenditure",
+                "code": "SYB67_176_202411_Tourist-Visitors Arrival and Expenditure.csv",
+                "category": "Tourism"
+            },
+            # Development Assistance
+            {
+                "name": "Net Disbursements from Official ODA to Recipients",
+                "code": "SYB67_226_202411_Net Disbursements from Official ODA to Recipients.csv",
+                "category": "Development"
+            },
+            {
+                "name": "Net Disbursements from Official ODA from Donors",
+                "code": "SYB67_223_202411_Net Disbursements from Official ODA from Donors.csv",
+                "category": "Development"
             }
         ]
         
