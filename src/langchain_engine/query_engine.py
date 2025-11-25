@@ -20,13 +20,22 @@ class CountryQueryEngine:
     # Custom prompt template for country queries
     PROMPT_TEMPLATE = """You are an expert assistant providing accurate information about countries based on the provided context.
 
-Use the following pieces of context to answer the question. If you cannot find the answer in the context, say "I don't have enough information to answer that question."
+Use the following pieces of context to answer the question. The context contains data from multiple sources including UN Data, Wikipedia, and other databases.
 
-When citing data, mention the source if multiple sources are available. For example:
-- "According to World Bank Open Data (2024), France's GDP is $3.16 trillion"
-- "The GeoChain Country Database shows France's population as 67.39 million"
+IMPORTANT: 
+- Review ALL the provided context carefully before answering
+- Use data from MULTIPLE different indicators and sources when available
+- If multiple indicators are requested, ensure you include data for ALL of them
+- Don't focus on just a few indicators - spread your answer across all relevant data in the context
+
+When citing data, mention the source and year. For example:
+- "According to UN Data (2024), France's unemployment rate is 7.3%"
+- "Based on Wikipedia, France is located in Western Europe..."
+- "The World Bank reports France's GDP is $3.16 trillion (2024)"
 
 Always cite specific data points from the context when available, such as statistics, dates, or other factual information.
+
+If you cannot find information about a specific indicator in the context, explicitly state: "No data available for [indicator name] in the provided context."
 
 Context:
 {context}
@@ -80,19 +89,48 @@ Detailed Answer:"""
             logger.info("Vector store needs to be created first")
             return
         
-        # Create retriever
-        retriever = self.vector_store_manager.get_retriever(k=5)
+        # Create custom retriever that includes Wikipedia
+        self.retriever = self._create_hybrid_retriever()
         
         # Create QA chain
         self.qa_chain = RetrievalQA.from_chain_type(
             llm=self.llm,
             chain_type="stuff",
-            retriever=retriever,
+            retriever=self.retriever,
             return_source_documents=True,
             chain_type_kwargs={"prompt": self.prompt}
         )
         
         logger.info("QA chain initialized successfully")
+    
+    def _create_hybrid_retriever(self):
+        """Create a hybrid retriever that ensures Wikipedia content is included"""
+        from langchain.retrievers import EnsembleRetriever
+        
+        # MMR retriever for diverse statistical data
+        mmr_retriever = self.vector_store_manager.get_retriever(
+            k=15,
+            search_type="mmr",
+            search_kwargs={"k": 15, "fetch_k": 80, "lambda_mult": 0.3}
+        )
+        
+        # Simple similarity retriever specifically for Wikipedia
+        # This will find Wikipedia docs that match the query
+        wiki_retriever = self.vector_store_manager.vector_store.as_retriever(
+            search_type="similarity",
+            search_kwargs={
+                "k": 5,
+                "filter": {"source_name": "Wikipedia"}  # Only Wikipedia docs
+            }
+        )
+        
+        # Combine both retrievers with equal weight
+        ensemble_retriever = EnsembleRetriever(
+            retrievers=[mmr_retriever, wiki_retriever],
+            weights=[0.6, 0.4]  # 60% MMR (statistics), 40% Wikipedia
+        )
+        
+        return ensemble_retriever
     
     def query(self, question: str) -> Dict[str, Any]:
         """

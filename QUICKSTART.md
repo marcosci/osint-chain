@@ -6,8 +6,8 @@
 
 ```bash
 cd /Users/marcosciaini/Documents/geochain
-python -m venv venv
-source venv/bin/activate
+python3.12 -m venv venv_312
+source venv_312/bin/activate
 ```
 
 2. **Install dependencies**:

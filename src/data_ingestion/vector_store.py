@@ -119,9 +119,22 @@ class VectorStoreManager:
         logger.info(f"Found {len(results)} similar documents for query")
         return results
     
-    def get_retriever(self, k: int = 4):
-        """Get a retriever for RAG chain"""
+    def get_retriever(self, k: int = 4, search_type: str = "similarity", search_kwargs: dict = None):
+        """
+        Get a retriever for RAG chain.
+        
+        Args:
+            k: Number of documents to retrieve
+            search_type: Type of search ("similarity", "mmr", "similarity_score_threshold")
+            search_kwargs: Additional search parameters
+        """
         if self.vector_store is None:
             raise ValueError("Vector store not initialized")
         
-        return self.vector_store.as_retriever(search_kwargs={"k": k})
+        if search_kwargs is None:
+            search_kwargs = {"k": k}
+        
+        return self.vector_store.as_retriever(
+            search_type=search_type,
+            search_kwargs=search_kwargs
+        )
