@@ -16,53 +16,13 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for clean, modern look
+# Custom CSS for clean look
 st.markdown("""
     <style>
-    /* Center the main content */
-    .main .block-container {
-        max-width: 800px;
-        padding-top: 2rem;
-        padding-left: 2rem;
-        padding-right: 2rem;
-        margin-left: auto;
-        margin-right: auto;
-    }
-    
-    /* Chat input styling */
-    .stChatFloatingInputContainer {
-        max-width: 800px;
-        margin-left: auto;
-        margin-right: auto;
-    }
-    
-    /* Input field styling */
-    .stTextInput > div > div > input {
-        font-size: 1rem;
-    }
-    
-    /* Chat message styling */
-    .stChatMessage {
-        max-width: 800px;
-        margin-left: auto;
-        margin-right: auto;
-    }
-    
-    /* Button styling */
     .stButton > button {
         width: 100%;
         border-radius: 0.5rem;
         padding: 0.5rem;
-    }
-    
-    /* Title centering */
-    h1 {
-        text-align: center;
-    }
-    
-    /* Caption centering */
-    .main .block-container > div:first-child p {
-        text-align: center;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -143,7 +103,12 @@ def main():
     # Display chat history
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+            # Display content with markdown for proper formatting
+            content = message["content"]
+            if isinstance(content, str):
+                st.markdown(content)
+            else:
+                st.write(str(content))
             
             # Show confidence if enabled
             if message["role"] == "assistant" and show_confidence and "confidence" in message:
@@ -187,7 +152,12 @@ def main():
                 confidence = result.get("confidence", 0)
                 sources = result.get("sources", [])
                 
-                # Display answer
+                # Debug: Check answer type and value
+                if not isinstance(answer, str):
+                    st.error(f"Debug: Answer type is {type(answer)}, converting to string")
+                    answer = str(answer)
+                
+                # Display answer - using st.markdown for better formatting
                 st.markdown(answer)
                 
                 # Display confidence
