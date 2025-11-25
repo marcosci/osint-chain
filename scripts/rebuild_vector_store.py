@@ -96,37 +96,16 @@ def rebuild_vector_store():
             "description": "Adult literacy rate"
         })
     
-    # UN Data Sources
-    
-    # 7. UN Population Data
-    un_pop = Path("data/datasets/un_data/un_population.csv")
-    if un_pop.exists():
-        datasets.append({
-            "path": un_pop,
-            "name": "UN Data",
-            "year": "2022",
-            "description": "Population, surface area and density"
-        })
-    
-    # 8. UN GDP Data
-    un_gdp = Path("data/datasets/un_data/un_gdp.csv")
-    if un_gdp.exists():
-        datasets.append({
-            "path": un_gdp,
-            "name": "UN Data",
-            "year": "2022",
-            "description": "GDP and GDP per capita"
-        })
-    
-    # 9. UN Education Data
-    un_edu = Path("data/datasets/un_data/un_education.csv")
-    if un_edu.exists():
-        datasets.append({
-            "path": un_edu,
-            "name": "UN Data",
-            "year": "2022",
-            "description": "Education statistics"
-        })
+    # UN Data Sources (auto-discover all CSV files)
+    un_data_dir = Path("data/datasets/un_data")
+    if un_data_dir.exists():
+        for csv_file in un_data_dir.glob("*.csv"):
+            datasets.append({
+                "path": csv_file,
+                "name": "UN Data",
+                "year": "2022",
+                "description": f"{csv_file.stem.replace('_', ' ')}"
+            })
     
     # Ingest all datasets
     print(f"\n📊 Found {len(datasets)} datasets to ingest\n")
