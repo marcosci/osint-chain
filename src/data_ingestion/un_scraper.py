@@ -156,35 +156,51 @@ class UNDataScraper:
         """
         try:
             logger.info(f"Fetching: {filename}")
+            logger.info(f"URL: {url}")
+            
             response = self.session.get(url, timeout=60)
+            
+            logger.info(f"Status code: {response.status_code}")
             
             # Check for server errors and skip
             if response.status_code >= 500:
                 logger.warning(f"⚠️  Server error ({response.status_code}), skipping: {filename}")
                 return None
             
+            if response.status_code == 404:
+                logger.warning(f"⚠️  File not found (404), skipping: {filename}")
+                return None
+            
             response.raise_for_status()
+            
+            # Check content type
+            content_type = response.headers.get('content-type', '')
+            logger.info(f"Content-Type: {content_type}")
+            
+            # Check if response is actually CSV
+            if 'text/csv' not in content_type and 'text/plain' not in content_type:
+                logger.warning(f"⚠️  Unexpected content type: {content_type}, trying anyway...")
             
             # Save raw file
             filepath = self.output_dir / filename
             filepath.write_bytes(response.content)
-            logger.info(f"✅ Saved: {filepath}")
+            logger.info(f"✅ Saved: {filepath} ({len(response.content)} bytes)")
             
             # Parse CSV
             from io import StringIO
             df = pd.read_csv(StringIO(response.text), encoding='utf-8', low_memory=False)
-            logger.info(f"   Loaded {len(df)} rows")
+            logger.info(f"   Loaded {len(df)} rows, {len(df.columns)} columns")
             
             return df
             
         except requests.exceptions.HTTPError as e:
-            if "500" in str(e):
-                logger.warning(f"⚠️  Server error, skipping: {filename}")
-            else:
-                logger.error(f"❌ HTTP error fetching {filename}: {e}")
+            logger.error(f"❌ HTTP error fetching {filename}: {e}")
+            logger.error(f"   Status: {response.status_code if 'response' in locals() else 'unknown'}")
             return None
         except Exception as e:
             logger.error(f"❌ Error fetching {filename}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return None
     
     def fetch_all(self, delay: float = 2.0) -> Dict[str, pd.DataFrame]:
