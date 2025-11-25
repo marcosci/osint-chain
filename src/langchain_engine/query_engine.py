@@ -22,6 +22,10 @@ class CountryQueryEngine:
 
 Use the following pieces of context to answer the question. If you cannot find the answer in the context, say "I don't have enough information to answer that question."
 
+When citing data, mention the source if multiple sources are available. For example:
+- "According to World Bank Open Data (2024), France's GDP is $3.16 trillion"
+- "The GeoChain Country Database shows France's population as 67.39 million"
+
 Always cite specific data points from the context when available, such as statistics, dates, or other factual information.
 
 Context:
@@ -111,12 +115,26 @@ Detailed Answer:"""
             logger.info(f"Processing query: {question}")
             result = self.qa_chain.invoke({"query": question})
             
-            # Extract source information
+            # Extract and format source information professionally
             sources = []
             for doc in result.get("source_documents", []):
+                metadata = doc.metadata
+                
+                # Format source citation professionally
+                source_name = metadata.get("source_name", "Unknown Source")
+                source_year = metadata.get("source_year", "")
+                
+                # Build citation
+                citation = source_name
+                if source_year:
+                    citation += f" ({source_year})"
+                
                 sources.append({
                     "content": doc.page_content[:200] + "...",
-                    "metadata": doc.metadata
+                    "citation": citation,
+                    "source_name": source_name,
+                    "year": source_year,
+                    "metadata": metadata
                 })
             
             response = {

@@ -24,7 +24,8 @@ class DocumentProcessor:
     
     def process_dataframe(self, df: pd.DataFrame, 
                           text_columns: List[str] = None,
-                          metadata_columns: List[str] = None) -> List[Document]:
+                          metadata_columns: List[str] = None,
+                          base_metadata: dict = None) -> List[Document]:
         """
         Convert DataFrame to LangChain Documents.
         
@@ -32,6 +33,7 @@ class DocumentProcessor:
             df: Input DataFrame
             text_columns: Columns to use as document content (default: all columns)
             metadata_columns: Columns to store as metadata (default: all columns)
+            base_metadata: Base metadata to add to all documents (source info, etc.)
         """
         documents = []
         
@@ -52,8 +54,11 @@ class DocumentProcessor:
             
             content = "\n".join(text_parts)
             
-            # Also keep all data in metadata for programmatic access
-            metadata = {"source": "dataframe", "row_id": idx}
+            # Build metadata with base metadata first
+            metadata = base_metadata.copy() if base_metadata else {}
+            metadata["row_id"] = idx
+            
+            # Add column data to metadata
             for col in metadata_columns:
                 if pd.notna(row[col]):
                     metadata[col] = str(row[col])
@@ -64,13 +69,15 @@ class DocumentProcessor:
         return documents
     
     def process_json(self, data: List[Dict[str, Any]], 
-                     text_fields: List[str] = None) -> List[Document]:
+                     text_fields: List[str] = None,
+                     base_metadata: dict = None) -> List[Document]:
         """
         Convert JSON data to LangChain Documents.
         
         Args:
             data: List of dictionaries
             text_fields: Fields to use as document content
+            base_metadata: Base metadata to add to all documents
         """
         documents = []
         
@@ -84,7 +91,9 @@ class DocumentProcessor:
                 # Use all fields
                 content = "\n".join([f"{k}: {v}" for k, v in item.items()])
             
-            metadata = {"source": "json", "item_id": idx}
+            # Create metadata with base metadata
+            metadata = base_metadata.copy() if base_metadata else {}
+            metadata["item_id"] = idx
             metadata.update({k: str(v) for k, v in item.items() 
                            if k not in (text_fields or [])})
             

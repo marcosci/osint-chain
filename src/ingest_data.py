@@ -16,7 +16,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def ingest_data(file_path: str, text_columns: list = None, chunk_size: int = 1000):
+def ingest_data(file_path: str, text_columns: list = None, chunk_size: int = 1000, 
+                source_name: str = None, source_year: str = None):
     """
     Ingest data from a file into the vector store.
     
@@ -24,6 +25,8 @@ def ingest_data(file_path: str, text_columns: list = None, chunk_size: int = 100
         file_path: Path to the data file
         text_columns: Columns to use for text content (for CSV/JSON)
         chunk_size: Size of text chunks
+        source_name: Human-readable source name (e.g., "World Bank Open Data")
+        source_year: Year of the data (e.g., "2024")
     """
     try:
         # Validate config
@@ -38,18 +41,49 @@ def ingest_data(file_path: str, text_columns: list = None, chunk_size: int = 100
         logger.info(f"Loading data from {file_path}")
         data = loader.load_dataset(file_path)
         
+        # Determine source metadata
+        file_name = Path(file_path).name
+        
+        # Auto-detect source name if not provided
+        if source_name is None:
+            if 'worldbank' in file_path.lower() or 'wb_' in file_path.lower():
+                source_name = "World Bank Open Data"
+            elif 'un_' in file_path.lower() or 'un.' in file_path.lower():
+                source_name = "UN Data"
+            elif 'countries.csv' in file_path:
+                source_name = "GeoChain Country Database"
+            else:
+                source_name = file_name
+        
+        # Auto-detect year from filename or content
+        if source_year is None:
+            import re
+            year_match = re.search(r'20\d{2}', file_path)
+            if year_match:
+                source_year = year_match.group(0)
+        
+        # Build base metadata
+        base_metadata = {
+            "source_name": source_name,
+            "source_file": file_name,
+            "source_path": file_path
+        }
+        if source_year:
+            base_metadata["source_year"] = source_year
+        
         # Process data based on type
         if isinstance(data, str):
             # Text file
-            documents = processor.process_text(data, metadata={"source": file_path})
+            documents = processor.process_text(data, metadata=base_metadata)
         elif isinstance(data, list):
             # JSON data
-            documents = processor.process_json(data)
+            documents = processor.process_json(data, base_metadata=base_metadata)
         else:
             # DataFrame
             documents = processor.process_dataframe(
                 data,
-                text_columns=text_columns
+                text_columns=text_columns,
+                base_metadata=base_metadata
             )
         
         logger.info(f"Processed {len(documents)} documents")
