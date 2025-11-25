@@ -107,6 +107,17 @@ def rebuild_vector_store():
                 "description": f"{csv_file.stem.replace('_', ' ')}"
             })
     
+    # Wikipedia Data Sources
+    wikipedia_dir = Path("data/datasets/wikipedia")
+    wiki_csv = wikipedia_dir / "wikipedia_countries.csv"
+    if wiki_csv.exists():
+        datasets.append({
+            "path": wiki_csv,
+            "name": "Wikipedia",
+            "year": "2024",
+            "description": "Country articles and information"
+        })
+    
     # Ingest all datasets
     print(f"\n📊 Found {len(datasets)} datasets to ingest\n")
     

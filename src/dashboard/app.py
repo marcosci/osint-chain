@@ -87,8 +87,7 @@ def main():
         st.caption("GeoChain v1.0")
     
     # Main header
-    st.title("GeoChain Chat")
-    st.caption("Ask questions about countries and get AI-powered answers")
+    st.title("OSINT Chat")
     
     # Check API
     if not check_api_health():
