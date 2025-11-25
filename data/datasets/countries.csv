@@ -1,0 +1,11 @@
+country,population,gdp_usd_billion,capital,continent,area_km2,language,currency
+France,67390000,2937.47,Paris,Europe,643801,French,Euro
+Germany,83240000,4031.15,Berlin,Europe,357022,German,Euro
+United States,331900000,23315.08,Washington D.C.,North America,9833517,English,US Dollar
+Japan,125800000,4937.42,Tokyo,Asia,377975,Japanese,Yen
+Brazil,213990000,1877.94,Brasília,South America,8515767,Portuguese,Real
+United Kingdom,67220000,3070.67,London,Europe,243610,English,Pound Sterling
+India,1380000000,3173.40,New Delhi,Asia,3287263,Hindi,Indian Rupee
+China,1439323776,17734.06,Beijing,Asia,9596961,Mandarin,Yuan
+Canada,38005000,1988.34,Ottawa,North America,9984670,English/French,Canadian Dollar
+Australia,25687000,1552.67,Canberra,Oceania,7692024,English,Australian Dollar

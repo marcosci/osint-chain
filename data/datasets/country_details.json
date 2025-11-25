@@ -1,0 +1,96 @@
+[
+  {
+    "country": "France",
+    "description": "France is a Western European country known for its rich history, culture, and economy. It is a founding member of the European Union and has significant influence in global affairs.",
+    "key_facts": [
+      "Home to the Eiffel Tower and Louvre Museum",
+      "World's most visited country for tourism",
+      "Major agricultural producer, especially wine and cheese",
+      "Nuclear energy provides 70% of electricity",
+      "Birthplace of human rights and democracy concepts"
+    ],
+    "economy": {
+      "sectors": [
+        "tourism",
+        "aerospace",
+        "automotive",
+        "luxury goods",
+        "agriculture"
+      ],
+      "unemployment_rate": 7.3,
+      "major_exports": ["aircraft", "pharmaceuticals", "wine", "machinery"]
+    }
+  },
+  {
+    "country": "Germany",
+    "description": "Germany is Europe's largest economy and a global leader in engineering, automotive, and manufacturing industries. It plays a central role in the European Union.",
+    "key_facts": [
+      "Largest economy in Europe",
+      "World leader in automotive engineering",
+      "Strong manufacturing and export economy",
+      "Highly developed infrastructure",
+      "Leader in renewable energy adoption"
+    ],
+    "economy": {
+      "sectors": [
+        "automotive",
+        "machinery",
+        "chemicals",
+        "electronics",
+        "pharmaceuticals"
+      ],
+      "unemployment_rate": 3.1,
+      "major_exports": ["vehicles", "machinery", "chemicals", "electronics"]
+    }
+  },
+  {
+    "country": "United States",
+    "description": "The United States is the world's largest economy and a global superpower. It is known for its technological innovation, diverse culture, and significant influence in international affairs.",
+    "key_facts": [
+      "World's largest economy by GDP",
+      "Leader in technology and innovation",
+      "Diverse geography and climate zones",
+      "Major cultural influence globally",
+      "Home to Silicon Valley and Wall Street"
+    ],
+    "economy": {
+      "sectors": [
+        "technology",
+        "finance",
+        "healthcare",
+        "manufacturing",
+        "entertainment"
+      ],
+      "unemployment_rate": 3.7,
+      "major_exports": [
+        "machinery",
+        "aircraft",
+        "refined petroleum",
+        "vehicles",
+        "pharmaceuticals"
+      ]
+    }
+  },
+  {
+    "country": "Japan",
+    "description": "Japan is an island nation in East Asia known for its technological advancement, rich cultural heritage, and significant economic influence. It has the world's third-largest economy.",
+    "key_facts": [
+      "World leader in automotive and electronics industries",
+      "Unique blend of traditional and modern culture",
+      "Highly developed public transportation system",
+      "Major innovator in robotics and technology",
+      "Aging population with high life expectancy"
+    ],
+    "economy": {
+      "sectors": [
+        "automotive",
+        "electronics",
+        "robotics",
+        "machinery",
+        "steel"
+      ],
+      "unemployment_rate": 2.6,
+      "major_exports": ["vehicles", "machinery", "electronics", "chemicals"]
+    }
+  }
+]

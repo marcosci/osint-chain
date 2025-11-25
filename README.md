@@ -24,7 +24,7 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Edit .env and add your OpenAI API key
+# Edit .env and add your OpenRouter API key from https://openrouter.ai/keys
 ```
 
 3. **Prepare your datasets**:
