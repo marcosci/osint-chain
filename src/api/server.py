@@ -16,6 +16,12 @@ from src.config import Config
 from src.langchain_engine.query_engine import CountryQueryEngine
 from src.data_ingestion import DataLoader, DocumentProcessor, VectorStoreManager
 
+# Add imports for PMESII analysis
+import sys
+sys.path.append(str(Path(__file__).parent.parent.parent / "scripts"))
+from list_indicators import extract_indicators_from_un_data
+from pmesii_analysis import group_indicators_by_pmesii, get_domain_summary
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -60,6 +66,12 @@ class CompareRequest(BaseModel):
     country1: str
     country2: str
     aspect: Optional[str] = "all"
+
+
+class PMESIIRequest(BaseModel):
+    country: str
+    domain: Optional[str] = None  # If None, return all domains grouped
+    years: Optional[int] = None  # Limit to last N years
 
 
 @app.on_event("startup")
@@ -148,6 +160,85 @@ async def compare_countries(request: CompareRequest):
         return result
     except Exception as e:
         logger.error(f"Comparison error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/country/pmesii")
+async def pmesii_analysis(request: PMESIIRequest):
+    """
+    Perform PMESII domain analysis for a country.
+    If domain is specified, returns detailed summary for that domain.
+    Otherwise, returns indicators grouped by all domains.
+    """
+    try:
+        # Extract indicators
+        indicators = extract_indicators_from_un_data(request.country)
+        indicators_list = sorted(list(indicators))
+        
+        if not indicators_list:
+            return {
+                "country": request.country,
+                "error": "No indicators found for this country"
+            }
+        
+        # Group by PMESII domains
+        grouped = group_indicators_by_pmesii(indicators_list, request.country)
+        
+        if not grouped:
+            return {
+                "country": request.country,
+                "error": "Failed to group indicators"
+            }
+        
+        # If specific domain requested, get detailed summary
+        if request.domain:
+            domain_cap = request.domain.capitalize()
+            if domain_cap not in grouped:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Domain '{request.domain}' not found. Available: {', '.join(grouped.keys())}"
+                )
+            
+            domain_indicators = grouped[domain_cap]
+            if not domain_indicators:
+                return {
+                    "country": request.country,
+                    "domain": domain_cap,
+                    "indicators": [],
+                    "summary": f"No indicators found for {domain_cap} domain"
+                }
+            
+            # Get detailed summary
+            summary = get_domain_summary(
+                request.country,
+                domain_cap,
+                domain_indicators,
+                request.years
+            )
+            
+            return {
+                "country": request.country,
+                "domain": domain_cap,
+                "indicators": domain_indicators,
+                "indicator_count": len(domain_indicators),
+                "summary": summary,
+                "years_filter": request.years
+            }
+        
+        # Return grouped indicators for all domains
+        domain_counts = {domain: len(indicators) for domain, indicators in grouped.items()}
+        
+        return {
+            "country": request.country,
+            "domains": grouped,
+            "domain_counts": domain_counts,
+            "total_indicators": len(indicators_list)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"PMESII analysis error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

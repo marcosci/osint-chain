@@ -54,6 +54,29 @@ def query_api(question: str) -> Dict[str, Any]:
         return {"error": str(e)}
 
 
+def pmesii_analysis_api(country: str, domain: str = None, years: int = None) -> Dict[str, Any]:
+    """Get PMESII analysis from API"""
+    try:
+        payload = {"country": country}
+        if domain:
+            payload["domain"] = domain
+        if years:
+            payload["years"] = years
+            
+        response = requests.post(
+            f"{API_URL}/country/pmesii",
+            json=payload,
+            timeout=60
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"error": f"API error: {response.status_code}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def main():
     """Main chat application"""
     
@@ -68,6 +91,67 @@ def main():
         else:
             st.error("⚠️ API Offline")
             st.caption("Start with: `python src/api/server.py`")
+        
+        st.divider()
+        
+        # PMESII Analysis Section
+        st.subheader("🎯 PMESII Analysis")
+        
+        pmesii_country = st.text_input("Country", placeholder="e.g., Germany")
+        
+        pmesii_domain = st.selectbox(
+            "Domain (optional)",
+            ["All Domains", "Political", "Military", "Economic", "Social", "Infrastructure", "Information", "Geo"]
+        )
+        
+        pmesii_years = st.number_input(
+            "Last N years (optional)",
+            min_value=0,
+            max_value=50,
+            value=0,
+            help="Leave 0 for all years"
+        )
+        
+        if st.button("🔍 Analyze", disabled=not api_running or not pmesii_country):
+            with st.spinner("Analyzing..."):
+                domain_val = None if pmesii_domain == "All Domains" else pmesii_domain.lower()
+                years_val = None if pmesii_years == 0 else pmesii_years
+                
+                result = pmesii_analysis_api(pmesii_country, domain_val, years_val)
+                
+                if "error" in result:
+                    st.error(f"Error: {result['error']}")
+                else:
+                    # Format and display results in chat
+                    if "summary" in result:
+                        # Domain-specific analysis
+                        msg = f"**PMESII {result['domain']} Analysis for {result['country']}**"
+                        if years_val:
+                            msg += f" *(Last {years_val} years)*"
+                        msg += f"\n\n{result['summary']}"
+                        
+                        st.session_state.messages.append({
+                            "role": "assistant",
+                            "content": msg,
+                            "confidence": 0.95,
+                            "sources": []
+                        })
+                    else:
+                        # All domains overview
+                        msg = f"**PMESII Indicator Overview for {result['country']}**\n\n"
+                        msg += f"Total Indicators: {result['total_indicators']}\n\n"
+                        
+                        for domain, count in result['domain_counts'].items():
+                            msg += f"- **{domain}**: {count} indicators\n"
+                        
+                        st.session_state.messages.append({
+                            "role": "assistant",
+                            "content": msg,
+                            "confidence": 1.0,
+                            "sources": []
+                        })
+                    
+                    st.rerun()
         
         st.divider()
         

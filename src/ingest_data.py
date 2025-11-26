@@ -52,6 +52,8 @@ def ingest_data(file_path: str, text_columns: list = None, chunk_size: int = 100
                 source_name = "World Bank Open Data"
             elif 'un_' in file_path.lower() or 'un.' in file_path.lower() or 'SYB' in file_path:
                 source_name = "UN Data"
+            elif 'global_leaders' in file_path.lower() or 'globalleadership' in file_path.lower():
+                source_name = "Global Leadership Project"
             elif 'countries.csv' in file_path:
                 source_name = "GeoChain Country Database"
             else:
