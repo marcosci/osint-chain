@@ -31,6 +31,7 @@ st.markdown("""
     /* Global styles */
     html, body, [class*="css"] {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: #09090b;
     }
     
     /* Main container */
@@ -365,6 +366,9 @@ def main():
                         </li>
                         <li style='padding: 0.5rem; margin-bottom: 0.5rem; background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 0.375rem;'>
                             "Analyze ethnic power relations in Ethiopia"
+                        </li>
+                        <li style='padding: 0.5rem; margin-bottom: 0.5rem; background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 0.375rem;'>
+                            "Show me PMESII analysis for Ukraine"
                         </li>
                     </ul>
                 </div>

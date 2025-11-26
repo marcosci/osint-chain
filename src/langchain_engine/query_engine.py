@@ -7,15 +7,39 @@ from langchain.chains import RetrievalQA
 from langchain_core.prompts import PromptTemplate
 from langchain_core.callbacks import BaseCallbackHandler
 import logging
+import re
+import sys
+from pathlib import Path
+
 
 from ..config import Config
 from ..data_ingestion.vector_store import VectorStoreManager
 
 logger = logging.getLogger(__name__)
+# Import PMESII analysis functions
+sys.path.append(str(Path(__file__).parent.parent.parent / "scripts"))
+try:
+    from list_indicators import extract_indicators_from_un_data
+    from pmesii_analysis import group_indicators_by_pmesii, get_domain_summary
+    PMESII_AVAILABLE = True
+except ImportError:
+    PMESII_AVAILABLE = False
+    logger.warning("PMESII analysis not available")
 
 
 class CountryQueryEngine:
     """Query engine for country-specific information using RAG"""
+    
+    # PMESII domain keywords for detection
+    PMESII_DOMAINS = {
+        "political": ["political", "politics", "government", "governance", "parliament", "elections", "diplomacy"],
+        "military": ["military", "defense", "security", "armed forces", "peacekeeping"],
+        "economic": ["economic", "economy", "gdp", "trade", "employment", "unemployment", "inflation"],
+        "social": ["social", "population", "demographics", "health", "education", "mortality", "fertility"],
+        "infrastructure": ["infrastructure", "transportation", "energy", "utilities", "water", "sanitation"],
+        "information": ["information", "media", "communications", "internet", "telecommunications"],
+        "geo": ["geography", "geographic", "environment", "climate", "natural resources", "emissions"]
+    }
     
     # Custom prompt template for country queries
     PROMPT_TEMPLATE = """You are an expert assistant providing accurate information about countries based on the provided context.
@@ -132,6 +156,134 @@ Detailed Answer:"""
         
         return ensemble_retriever
     
+    def _detect_pmesii_query(self, question: str) -> Optional[tuple]:
+        """
+        Detect if query is asking for PMESII analysis.
+        
+        Returns:
+            Tuple of (country, domain) if PMESII query detected, None otherwise
+        """
+        if not PMESII_AVAILABLE:
+            return None
+        
+        question_lower = question.lower()
+        
+        # Check for explicit PMESII mention
+        if "pmesii" in question_lower or "pmesi" in question_lower:
+            # Try to extract country name
+            # Simple pattern: look for country names (capitalized words)
+            words = question.split()
+            country = None
+            for i, word in enumerate(words):
+                if word[0].isupper() and word.lower() not in ['pmesii', 'what', 'provide', 'give', 'show', 'tell']:
+                    country = word
+                    break
+            
+            # Check for specific domain
+            domain = None
+            for dom, keywords in self.PMESII_DOMAINS.items():
+                if any(kw in question_lower for kw in keywords):
+                    domain = dom
+                    break
+            
+            return (country, domain) if country else None
+        
+        # Check for domain-specific queries with analysis keywords
+        analysis_keywords = ["analysis", "analyze", "assessment", "overview", "summary"]
+        has_analysis = any(kw in question_lower for kw in analysis_keywords)
+        
+        if has_analysis:
+            # Look for domain keywords
+            detected_domain = None
+            for domain, keywords in self.PMESII_DOMAINS.items():
+                if any(kw in question_lower for kw in keywords):
+                    detected_domain = domain
+                    break
+            
+            if detected_domain:
+                # Try to extract country
+                words = question.split()
+                for word in words:
+                    if word[0].isupper() and len(word) > 2:
+                        return (word, detected_domain)
+        
+        return None
+    
+    def _perform_pmesii_analysis(self, country: str, domain: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Perform PMESII analysis for a country.
+        
+        Args:
+            country: Country name
+            domain: Optional specific domain (e.g., 'economic', 'social')
+            
+        Returns:
+            Dict with analysis results
+        """
+        try:
+            logger.info(f"Performing PMESII analysis for {country}, domain: {domain or 'all'}")
+            
+            # Extract indicators
+            indicators = extract_indicators_from_un_data(country)
+            indicators_list = sorted(list(indicators))
+            
+            if not indicators_list:
+                return {
+                    "answer": f"No indicators found for {country} in the database.",
+                    "sources": [{"citation": "UN Data", "content": "No data available"}],
+                    "confidence": 0.0
+                }
+            
+            # Group by PMESII domains
+            grouped = group_indicators_by_pmesii(indicators_list, country)
+            
+            if domain:
+                # Specific domain analysis
+                domain_cap = domain.capitalize()
+                if domain_cap in grouped:
+                    domain_indicators = grouped[domain_cap]
+                    summary = get_domain_summary(country, domain_cap, domain_indicators)
+                    
+                    return {
+                        "answer": f"**PMESII {domain_cap} Analysis for {country}**\n\n{summary}",
+                        "sources": [
+                            {"citation": "UN Data", "content": f"{len(domain_indicators)} indicators analyzed"},
+                            {"citation": "PMESII Framework", "content": f"{domain_cap} domain"}
+                        ],
+                        "confidence": 0.9
+                    }
+                else:
+                    return {
+                        "answer": f"No {domain} indicators found for {country}.",
+                        "sources": [{"citation": "UN Data", "content": "No data for this domain"}],
+                        "confidence": 0.5
+                    }
+            else:
+                # Overview of all domains
+                domain_counts = {dom: len(inds) for dom, inds in grouped.items()}
+                overview = f"**PMESII Analysis Overview for {country}**\n\n"
+                overview += f"Total Indicators: {len(indicators_list)}\n\n"
+                overview += "**Indicators by Domain:**\n"
+                for dom, count in sorted(domain_counts.items(), key=lambda x: -x[1]):
+                    overview += f"- **{dom}**: {count} indicators\n"
+                
+                return {
+                    "answer": overview,
+                    "sources": [
+                        {"citation": "UN Data", "content": f"{len(indicators_list)} total indicators"},
+                        {"citation": "PMESII Framework", "content": "All domains analyzed"}
+                    ],
+                    "confidence": 0.95
+                }
+                
+        except Exception as e:
+            logger.error(f"PMESII analysis error: {str(e)}")
+            return {
+                "answer": f"Error performing PMESII analysis: {str(e)}",
+                "sources": [],
+                "confidence": 0.0
+            }
+    
     def query(self, question: str) -> Dict[str, Any]:
         """
         Query the system with a question.
@@ -142,6 +294,12 @@ Detailed Answer:"""
         Returns:
             Dict with 'answer', 'sources', and 'confidence'
         """
+        # Check if this is a PMESII query
+        pmesii_detection = self._detect_pmesii_query(question)
+        if pmesii_detection:
+            country, domain = pmesii_detection
+            return self._perform_pmesii_analysis(country, domain)
+        
         if self.qa_chain is None:
             return {
                 "answer": "The system has not been initialized with data yet. Please load data first.",
