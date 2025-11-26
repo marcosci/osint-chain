@@ -35,8 +35,8 @@ class EnhancedQueryEngine:
         self.llm = ChatOpenAI(
             model=Config.LLM_MODEL,
             temperature=0.0,  # Force deterministic behavior for tool calls
-            openai_api_key=Config.OPENROUTER_API_KEY,
-            openai_api_base=Config.OPENROUTER_BASE_URL,
+            api_key=Config.OPENROUTER_API_KEY,
+            base_url=Config.OPENROUTER_BASE_URL,
             default_headers={
                 "HTTP-Referer": Config.OPENROUTER_SITE_URL,
                 "X-Title": Config.OPENROUTER_APP_NAME,

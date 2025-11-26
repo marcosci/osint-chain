@@ -26,8 +26,8 @@ class CountryChains:
         self.llm = ChatOpenAI(
             model=llm_config["model"],
             temperature=llm_config["temperature"],
-            openai_api_key=llm_config["api_key"],
-            openai_api_base=llm_config["base_url"],
+            api_key=llm_config["api_key"],
+            base_url=llm_config["base_url"],
             default_headers=default_headers,
         )
     

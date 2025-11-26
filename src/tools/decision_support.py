@@ -9,6 +9,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 import json
 
+from ..config import Config
+
 
 class PolicyAnalysisInput(BaseModel):
     """Input for the policy analysis tool."""
@@ -30,7 +32,16 @@ class DecisionSupportSystem:
     """
     
     def __init__(self, llm: Optional[ChatOpenAI] = None, vector_store_manager=None):
-        self.llm = llm or ChatOpenAI(model="gpt-4", temperature=0.7)
+        self.llm = llm or ChatOpenAI(
+            model=Config.LLM_MODEL,
+            temperature=0.7,
+            api_key=Config.OPENROUTER_API_KEY,
+            base_url=Config.OPENROUTER_BASE_URL,
+            default_headers={
+                "HTTP-Referer": Config.OPENROUTER_SITE_URL,
+                "X-Title": Config.OPENROUTER_APP_NAME,
+            }
+        )
         self.vector_store_manager = vector_store_manager
         
     def _retrieve_context(self, query: str, k: int = 10) -> str:
