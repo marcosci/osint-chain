@@ -351,7 +351,13 @@ STAKEHOLDERS:
 @tool(args_schema=PolicyAnalysisInput)
 def decision_support_tool(question: str, context: Optional[str] = None) -> str:
     """
-    Advanced decision support system for complex policy questions.
+    Advanced decision support system for strategic policy and decision-making questions.
+    
+    ONLY use this tool when the user explicitly asks for:
+    - Strategy development or policy recommendations
+    - "How to stabilize/improve/address" questions requiring multi-step analysis
+    - Comprehensive decision-making frameworks
+    - Stakeholder analysis or impact assessments
     
     Conducts a comprehensive 6-step analysis:
     1. Situation Analysis - Assess current state
@@ -361,10 +367,8 @@ def decision_support_tool(question: str, context: Optional[str] = None) -> str:
     5. Impact Assessment - Evaluate consequences
     6. Recommendations - Provide actionable guidance
     
-    Best for questions like:
-    - "How to stabilize [country] politically"
-    - "What strategy to address [conflict/crisis]"
-    - "How to improve [governance/economy/security] in [region]"
+    DO NOT use for simple factual questions, statistics, or information retrieval.
+    Use knowledge_base_search for those instead.
     
     Args:
         question: The policy question to analyze

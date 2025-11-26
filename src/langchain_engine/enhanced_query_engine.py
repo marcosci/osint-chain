@@ -12,6 +12,7 @@ from ..config import Config
 from ..data_ingestion.vector_store import VectorStoreManager
 from ..tools.decision_support import decision_support_tool
 from ..tools.geoepr_tool import plot_geoepr_map
+from ..tools.cisi_tool import analyze_critical_infrastructure
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +108,7 @@ Answer:"""
             factual queries."""
         )
         
-        return [rag_tool, decision_support_tool, plot_geoepr_map]
+        return [rag_tool, decision_support_tool, plot_geoepr_map, analyze_critical_infrastructure]
     
     def _create_agent(self) -> AgentExecutor:
         """Create the agent executor using ReAct pattern."""
@@ -132,10 +133,13 @@ Final Answer: the final answer to the original input question
 
 IMPORTANT GUIDELINES:
 - For map requests ("show map", "plot ethnic groups", etc.), you MUST use the plot_geoepr_map tool
-- The plot_geoepr_map tool returns a MAP:<html> string that will be rendered as an interactive map
-- After calling plot_geoepr_map, include its output in your Final Answer
-- Use knowledge_base_search for factual queries about countries, statistics, demographics
-- Use decision_support_tool for complex policy questions requiring structured analysis
+- For critical infrastructure queries, you MUST use the analyze_critical_infrastructure tool
+- Both tools return text with MAP:<html> at the end - include the ENTIRE response EXACTLY as-is in your Final Answer
+- DO NOT paraphrase, summarize, or modify tool outputs that contain MAP: - copy them verbatim
+- The MAP:<html> part will be rendered as an interactive visualization
+- Use knowledge_base_search for MOST questions: factual queries, statistics, country info, demographics, economy, etc.
+- ONLY use decision_support_tool when explicitly asked for strategy, policy recommendations, or multi-step analysis
+- Decision support is SLOW - avoid using it unless the question clearly asks "how to", "what strategy", "recommend policy"
 
 Begin!
 
@@ -178,6 +182,36 @@ Thought: {agent_scratchpad}"""
                 any(keyword in question_lower for keyword in map_keywords) and
                 any(keyword in question_lower for keyword in location_keywords)
             )
+            
+            # Check for infrastructure queries
+            infrastructure_keywords = ['infrastructure', 'cisi', 'critical infrastructure']
+            is_infrastructure_request = any(keyword in question_lower for keyword in infrastructure_keywords)
+            
+            if is_infrastructure_request:
+                # Extract country name
+                import re
+                patterns = [
+                    r'(?:in|of|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)',
+                    r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+infrastructure',
+                    r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*$',
+                ]
+                
+                country = None
+                for pattern in patterns:
+                    match = re.search(pattern, question)
+                    if match:
+                        country = match.group(1)
+                        break
+                
+                if country:
+                    logger.info(f"Detected infrastructure request for country: {country}")
+                    try:
+                        from ..tools.cisi_tool import analyze_critical_infrastructure
+                        result = analyze_critical_infrastructure.invoke({"country": country, "max_hotspots": 10})
+                        return result
+                    except Exception as e:
+                        logger.error(f"Error analyzing infrastructure: {e}", exc_info=True)
+                        # Fall through to regular agent handling
             
             if is_map_request:
                 # Extract country name (simple approach)

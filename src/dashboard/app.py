@@ -8,11 +8,11 @@ from typing import Dict, Any
 # API Configuration
 API_URL = "http://localhost:8000"
 
-# User avatar as data URI
-USER_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='%2309090b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z'/%3E%3C/svg%3E"
+# User avatar as data URI - uses currentColor to adapt to theme
+USER_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z'/%3E%3C/svg%3E"
 
-# AI assistant avatar as data URI
-AI_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='%2309090b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M8.625 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 0 1 .778-.332 48.294 48.294 0 0 0 5.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z'/%3E%3C/svg%3E"
+# AI assistant avatar as data URI - uses currentColor to adapt to theme
+AI_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M8.625 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 0 1 .778-.332 48.294 48.294 0 0 0 5.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z'/%3E%3C/svg%3E"
 
 # Page configuration
 st.set_page_config(
@@ -28,27 +28,59 @@ st.markdown("""
     /* Import Inter font for clean typography */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
-    /* Global styles */
+    /* ==================== GLOBAL STYLES ==================== */
     html, body, [class*="css"] {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color-scheme: light !important;
     }
     
-    /* Main container */
+    /* Force light mode */
+    .main {
+        color-scheme: light !important;
+    }
+    
+    /* Main container - Light */
     .main {
         background-color: #ffffff;
         max-width: 1400px;
         margin: 0 auto;
     }
     
-    /* Header styling */
-    h1 {
+    /* Headers - Light */
+    h1, h2, h3, h4, h5, h6 {
         font-weight: 600;
         color: #09090b;
         letter-spacing: -0.02em;
+    }
+    
+    h1 {
         margin-bottom: 0.5rem;
     }
     
-    /* Sidebar styling */
+    /* Paragraph text - Light */
+    p, div, span, li, label, a {
+        color: #09090b !important;
+    }
+    
+    /* Ensure all text elements are dark */
+    * {
+        color: #09090b;
+    }
+    
+    /* Override for specific elements that should keep their color */
+    .stSuccess * {
+        color: #166534 !important;
+    }
+    
+    .stError * {
+        color: #991b1b !important;
+    }
+    
+    .stWarning * {
+        color: #92400e !important;
+    }
+    
+    /* Sidebar - Light */
     [data-testid="stSidebar"] {
         background-color: #ffffff;
         border-right: 1px solid #e4e4e7;
@@ -66,11 +98,16 @@ st.markdown("""
         margin-bottom: 1rem;
     }
     
-    /* Button styling - shadcn inspired */
+    [data-testid="stSidebar"] label, 
+    [data-testid="stSidebar"] p {
+        color: #09090b !important;
+    }
+    
+    /* Buttons - Light */
     .stButton > button {
         width: 100%;
         background-color: #ffffff;
-        color: #09090b;
+        color: #09090b !important;
         border: 1px solid #e4e4e7;
         border-radius: 0.375rem;
         padding: 0.5rem 1rem;
@@ -85,9 +122,9 @@ st.markdown("""
         border-color: #d4d4d8;
     }
     
-    /* Chat message styling */
+    /* Chat messages - Light */
     [data-testid="stChatMessage"] {
-        background-color: #ffffff;
+        background-color: #ffffff !important;
         border: 1px solid #e4e4e7;
         border-radius: 0.5rem;
         padding: 1.25rem;
@@ -95,12 +132,39 @@ st.markdown("""
         box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05);
     }
     
+    [data-testid="stChatMessage"] p,
+    [data-testid="stChatMessage"] div,
+    [data-testid="stChatMessage"] span,
+    [data-testid="stChatMessage"] li,
+    [data-testid="stChatMessage"] h1,
+    [data-testid="stChatMessage"] h2,
+    [data-testid="stChatMessage"] h3,
+    [data-testid="stChatMessage"] strong,
+    [data-testid="stChatMessage"] em,
+    [data-testid="stChatMessage"] code {
+        color: #09090b !important;
+    }
+    
+    /* Ensure markdown content is dark */
+    [data-testid="stMarkdownContainer"] * {
+        color: #09090b !important;
+    }
+    
+    /* Specific overrides for markdown elements */
+    .main h1, .main h2, .main h3, .main h4, .main h5, .main h6 {
+        color: #09090b !important;
+    }
+    
+    .main p, .main li, .main span, .main div {
+        color: #09090b !important;
+    }
+    
     [data-testid="stChatMessage"][data-testid*="user"] {
-        background-color: #f4f4f5;
+        background-color: #f4f4f5 !important;
         border-color: #e4e4e7;
     }
     
-    /* Chat input styling */
+    /* Chat input - Light */
     [data-testid="stChatInput"] {
         border-radius: 0.5rem;
         border: 1px solid #e4e4e7;
@@ -110,13 +174,96 @@ st.markdown("""
     
     [data-testid="stChatInput"] textarea {
         border: none;
-        background-color: transparent;
+        background-color: #ffffff !important;
+        color: #09090b !important;
         font-size: 0.95rem;
     }
     
     [data-testid="stChatInput"] textarea:focus {
         box-shadow: none;
         border: none;
+    }
+    
+    /* Force textarea and input colors everywhere */
+    textarea, input {
+        color: #09090b !important;
+        background-color: #ffffff !important;
+    }
+    
+    /* Remove black rectangle behind chat input */
+    [data-testid="stBottom"] {
+        background-color: #ffffff !important;
+    }
+    
+    .stChatFloatingInputContainer {
+        background-color: #ffffff !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    [data-testid="stChatInputContainer"] {
+        background-color: #ffffff !important;
+    }
+    
+    /* Force light background for all containers */
+    .stApp, [data-testid="stAppViewContainer"] {
+        background-color: #ffffff !important;
+    }
+    
+    
+    /* Code blocks */
+    code {
+        background-color: #f4f4f5;
+        border: 1px solid #e4e4e7;
+        border-radius: 0.25rem;
+        padding: 0.125rem 0.375rem;
+        font-size: 0.875em;
+        color: #09090b;
+    }
+    
+    pre {
+        background-color: #fafafa;
+        border: 1px solid #e4e4e7;
+        border-radius: 0.375rem;
+        padding: 1rem;
+    }
+    
+    pre code {
+        color: #09090b;
+        background-color: transparent;
+        border: none;
+    }
+    
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        background-color: #fafafa;
+        border: 1px solid #e4e4e7;
+        border-radius: 0.375rem;
+        font-weight: 500;
+        font-size: 0.875rem;
+        color: #09090b;
+    }
+    
+    /* Divider styling */
+    hr {
+        border-color: #e4e4e7;
+        margin: 1.5rem 0;
+    }
+    
+    /* Checkbox styling */
+    [data-testid="stCheckbox"] {
+        padding: 0.5rem 0;
+    }
+    
+    /* Caption/small text */
+    .caption, small {
+        color: #71717a;
+        font-size: 0.8rem;
+    }
+    
+    /* Spinner */
+    .stSpinner > div {
+        border-color: #e4e4e7 #09090b #e4e4e7 #e4e4e7;
     }
     
     /* Status indicators */
@@ -151,62 +298,6 @@ st.markdown("""
         color: #92400e;
     }
     
-    /* Expander styling */
-    .streamlit-expanderHeader {
-        background-color: #fafafa;
-        border: 1px solid #e4e4e7;
-        border-radius: 0.375rem;
-        font-weight: 500;
-        font-size: 0.875rem;
-        color: #09090b;
-    }
-    
-    /* Code blocks */
-    code {
-        background-color: #f4f4f5;
-        border: 1px solid #e4e4e7;
-        border-radius: 0.25rem;
-        padding: 0.125rem 0.375rem;
-        font-size: 0.875em;
-        color: #09090b;
-    }
-    
-    pre {
-        background-color: #fafafa;
-        border: 1px solid #e4e4e7;
-        border-radius: 0.375rem;
-        padding: 1rem;
-    }
-    
-    /* Divider styling */
-    hr {
-        border-color: #e4e4e7;
-        margin: 1.5rem 0;
-    }
-    
-    /* Checkbox styling */
-    [data-testid="stCheckbox"] {
-        padding: 0.5rem 0;
-    }
-    
-    /* Caption/small text */
-    .caption, small {
-        color: #71717a;
-        font-size: 0.8rem;
-    }
-    
-    /* Spinner */
-    .stSpinner > div {
-        border-color: #e4e4e7 #09090b #e4e4e7 #e4e4e7;
-    }
-    
-    /* Hide streamlit branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    [data-testid="stToolbar"] {visibility: hidden;}
-    .stDeployButton {display: none;}
-    
     /* Metric cards for stats */
     [data-testid="metric-container"] {
         background-color: #ffffff;
@@ -215,6 +306,13 @@ st.markdown("""
         padding: 1rem;
         box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     }
+    
+    /* Hide streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    [data-testid="stToolbar"] {visibility: hidden;}
+    .stDeployButton {display: none;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -234,7 +332,7 @@ def query_api(question: str) -> Dict[str, Any]:
         response = requests.post(
             f"{API_URL}/query",
             json={"question": question},
-            timeout=30
+            timeout=120  # Increased timeout for CISI analysis
         )
         
         if response.status_code == 200:
@@ -380,7 +478,7 @@ def main():
             # Display content with markdown for proper formatting
             content = message["content"]
             if isinstance(content, str):
-                # Check if content contains a map
+                # Check if content contains a map (both GeoEPR and CISI use MAP: prefix)
                 if "MAP:" in content:
                     # Split content into text and map parts
                     parts = content.split("MAP:", 1)
@@ -461,7 +559,7 @@ def main():
                 if not isinstance(answer, str):
                     answer = str(answer)
                 
-                # Check if answer contains a map
+                # Check if answer contains a map (both GeoEPR and CISI use MAP: prefix)
                 if "MAP:" in answer:
                     # Split content into text and map parts
                     parts = answer.split("MAP:", 1)
