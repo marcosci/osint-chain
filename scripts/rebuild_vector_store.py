@@ -118,6 +118,27 @@ def rebuild_vector_store():
             "description": "Country articles and information"
         })
     
+    # Global Leadership Project Data
+    glp_file = Path("data/datasets/global_leaders/GlobalLeadershipProject_v1.parquet")
+    if glp_file.exists():
+        datasets.append({
+            "path": glp_file,
+            "name": "Global Leadership Project",
+            "year": "2024",
+            "description": "72,381+ political leaders worldwide with biographical, ethnic, educational data",
+            "text_columns": [
+                'glp_country', 'glp_person', 'person_gender', 'person_birthplace',
+                'person_birthcountry', 'person_occupation_all', 'person_education',
+                'person_college_country', 'person_ug_major', 'pol_party',
+                'person_party_aff_position', 'person_ethnic', 'person_ethnocultural_title',
+                'person_rel_current_title', 'person_lang_native_title',
+                'person_lang_spoken_title', 'person_office_position_1',
+                'person_office_position_2', 'person_office_position_3',
+                'office1', 'office2', 'office3'
+            ],
+            "chunk_size": 1500
+        })
+    
     # Ingest all datasets
     print(f"\n📊 Found {len(datasets)} datasets to ingest\n")
     
@@ -132,7 +153,9 @@ def rebuild_vector_store():
             ingest_data(
                 str(dataset['path']),
                 source_name=dataset['name'],
-                source_year=dataset.get('year')
+                source_year=dataset.get('year'),
+                text_columns=dataset.get('text_columns'),
+                chunk_size=dataset.get('chunk_size', 1000)
             )
             success_count += 1
             print(f"✅ Successfully ingested {dataset['name']}\n")

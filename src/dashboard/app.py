@@ -245,6 +245,29 @@ def query_api(question: str) -> Dict[str, Any]:
         return {"error": str(e)}
 
 
+def pmesii_analysis_api(country: str, domain: str = None, years: int = None) -> Dict[str, Any]:
+    """Get PMESII analysis from API"""
+    try:
+        payload = {"country": country}
+        if domain:
+            payload["domain"] = domain
+        if years:
+            payload["years"] = years
+            
+        response = requests.post(
+            f"{API_URL}/country/pmesii",
+            json=payload,
+            timeout=60
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"error": f"API error: {response.status_code}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def main():
     """Main chat application"""
     
@@ -273,7 +296,12 @@ def main():
         
         # Chat settings section
         st.markdown("### Display Options")
-        show_confidence = st.checkbox("Show confidence scores", value=True)
+        
+        st.divider()
+        
+        # Chat settings
+        st.subheader("Chat Settings")
+        show_confidence = st.checkbox("Show confidence scores", value=False)
         show_sources = st.checkbox("Show sources", value=False)
         
         st.divider()

@@ -55,6 +55,17 @@ class DataLoader:
             raise
     
     @staticmethod
+    def load_parquet(file_path: str) -> pd.DataFrame:
+        """Load Parquet file into DataFrame"""
+        try:
+            df = pd.read_parquet(file_path)
+            logger.info(f"Loaded Parquet with {len(df)} rows from {file_path}")
+            return df
+        except Exception as e:
+            logger.error(f"Error loading Parquet {file_path}: {str(e)}")
+            raise
+    
+    @staticmethod
     def load_dataset(file_path: str) -> Any:
         """Auto-detect format and load dataset"""
         path = Path(file_path)
@@ -70,5 +81,7 @@ class DataLoader:
             return DataLoader.load_json(file_path)
         elif suffix in ['.txt', '.md']:
             return DataLoader.load_text(file_path)
+        elif suffix == '.parquet':
+            return DataLoader.load_parquet(file_path)
         else:
             raise ValueError(f"Unsupported file format: {suffix}")
