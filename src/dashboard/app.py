@@ -464,6 +464,9 @@ def main():
                         <li style='padding: 0.5rem; margin-bottom: 0.5rem; background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 0.375rem;'>
                             "Analyze ethnic power relations in Ethiopia"
                         </li>
+                        <li style='padding: 0.5rem; margin-bottom: 0.5rem; background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 0.375rem;'>
+                            "Show me PMESII analysis for Ukraine"
+                        </li>
                     </ul>
                 </div>
             </div>
