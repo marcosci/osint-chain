@@ -8,6 +8,7 @@ import logging
 import json
 
 from ..analysis.cisi_analyzer import CISIAnalyzer
+from .map_registry import MapRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -125,8 +126,10 @@ def analyze_critical_infrastructure(country: str, max_hotspots: int = 10) -> str
         # Generate interactive map using Plotly (same as GeoEPR)
         try:
             map_html = analyzer.create_interactive_map(result['bounds'], country)
-            # Return with MAP: prefix (same as GeoEPR)
-            return f"{text_report}\n\nMAP:{map_html}"
+            # Register map to avoid passing huge HTML to LLM
+            map_id = MapRegistry.register_map(map_html)
+            # Return with MAP_ID: prefix
+            return f"{text_report}\n\nMAP_ID:{map_id}"
         except Exception as e:
             logger.warning(f"Could not generate map: {e}")
             # Return text only if map generation fails

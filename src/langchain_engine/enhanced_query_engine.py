@@ -1,7 +1,7 @@
 """
 Enhanced query engine with decision support capabilities.
 """
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain_core.prompts import PromptTemplate
@@ -13,6 +13,7 @@ from ..data_ingestion.vector_store import VectorStoreManager
 from ..tools.decision_support import decision_support_tool
 from ..tools.geoepr_tool import plot_geoepr_map
 from ..tools.cisi_tool import analyze_critical_infrastructure
+from ..tools.map_registry import MapRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,12 @@ class EnhancedQueryEngine:
         Config.validate()
         
         self.vector_store_manager = vector_store_manager or VectorStoreManager()
+        
+        # Try to load existing vector store
+        try:
+            self.vector_store_manager.load_vector_store()
+        except Exception as e:
+            logger.warning(f"Could not load vector store: {e}")
         
         # Use OpenRouter with proper configuration
         # Lower temperature for better tool-calling behavior
@@ -62,39 +69,69 @@ class EnhancedQueryEngine:
             - "What is the population of France?"
             - "Tell me about Germany's economy"
             - "What are the GDP statistics for Mali?"
+            - "What is the political situation in Sudan?"
             """
             try:
+                if self.vector_store_manager.vector_store is None:
+                    return "Knowledge base is not initialized. No information available."
+
                 retriever = self.vector_store_manager.get_retriever(k=10)
                 docs = retriever.get_relevant_documents(query)
                 
                 if not docs:
                     return "No relevant information found in the knowledge base."
                 
-                # Format context with sources
+                # Build sources list for citation
+                sources_list = []
                 context_parts = []
                 for i, doc in enumerate(docs, 1):
                     metadata = doc.metadata
                     source = metadata.get('source_name', 'Unknown')
                     year = metadata.get('source_year', '?')
+                    
+                    # Store source info
+                    sources_list.append(f"{source} ({year})")
+                    
+                    # Add to context with reference number
                     context_parts.append(
                         f"[Source {i}] {source} ({year}):\n{doc.page_content[:800]}"
                     )
                 
                 context = "\n\n".join(context_parts)
                 
-                # Use LLM to synthesize answer
+                # Build references section upfront
+                references_section = "\n\n---\n**References**\n"
+                for i, source in enumerate(sources_list, 1):
+                    references_section += f"{i}. {source}\n"
+                
+                # Use LLM to synthesize answer with scientific citations
                 prompt = f"""Based on the following context, answer the question comprehensively.
-Include specific data points and cite sources.
 
-Context:
+CRITICAL CITATION REQUIREMENTS:
+1. You MUST cite sources using superscript format: <sup>[1]</sup>, <sup>[2]</sup>, etc.
+2. Place citations IMMEDIATELY after the fact, claim, or statistic, BEFORE any punctuation
+3. Examples of correct citation placement:
+   - "Mali has multiple armed groups<sup>[1]</sup>."
+   - "The Tuareg groups include CMA and FPLA<sup>[1][2]</sup>."
+   - "According to the data, there are 7 ethnic groups<sup>[3]</sup> in the region."
+4. Use the exact source numbers [1], [2], [3], etc. that match the context below
+5. You can combine citations: <sup>[1][2]</sup> or <sup>[1,2]</sup>
+6. DO NOT include a References section in your answer - it will be added automatically
+
+Context with Source Numbers:
 {context}
 
 Question: {query}
 
-Answer:"""
+Provide a detailed answer with inline superscript citations:"""
                 
                 response = self.llm.invoke(prompt)
-                return response.content
+                answer_text = response.content
+                
+                # Always append the references section
+                answer_text += references_section
+                
+                return answer_text
                 
             except Exception as e:
                 logger.error(f"Error in RAG search: {e}")
@@ -134,10 +171,21 @@ Final Answer: the final answer to the original input question
 IMPORTANT GUIDELINES:
 - For map requests ("show map", "plot ethnic groups", etc.), you MUST use the plot_geoepr_map tool
 - For critical infrastructure queries, you MUST use the analyze_critical_infrastructure tool
-- Both tools return text with MAP:<html> at the end - include the ENTIRE response EXACTLY as-is in your Final Answer
-- DO NOT paraphrase, summarize, or modify tool outputs that contain MAP: - copy them verbatim
+- Both tools return text with MAP:<html> or MAP_ID:<id> at the end - include the ENTIRE response EXACTLY as-is in your Final Answer
 - The MAP:<html> part will be rendered as an interactive visualization
-- Use knowledge_base_search for MOST questions: factual queries, statistics, country info, demographics, economy, etc.
+- Use knowledge_base_search for MOST questions: factual queries, statistics, country info, demographics, economy, political situation, etc.
+- CRITICAL: When you use knowledge_base_search, it returns text with HTML superscript citations like <sup>[1]</sup> and a References section at the end
+- You MUST copy the ENTIRE Observation from knowledge_base_search directly into your Final Answer WITHOUT ANY CHANGES
+- DO NOT rewrite, summarize, paraphrase, or reorganize the answer from knowledge_base_search
+- DO NOT remove the <sup> tags or the References section
+- Simply copy the Observation text verbatim as your Final Answer
+- Example of CORRECT behavior:
+  * Observation: "Mali has complex conflicts<sup>[1]</sup>.\n\n---\n**References**\n1. EPR (2021)"
+  * Final Answer: "Mali has complex conflicts<sup>[1]</sup>.\n\n---\n**References**\n1. EPR (2021)"
+- Example of WRONG behavior (DO NOT DO THIS):
+  * Observation: "Mali has complex conflicts<sup>[1]</sup>.\n\n---\n**References**\n1. EPR (2021)"
+  * Final Answer: "Mali has complex conflicts." (citations and references removed - WRONG!)
+- DO NOT use plot_geoepr_map for general political questions unless the user EXPLICITLY asks for a map or visualization.
 - ONLY use decision_support_tool when explicitly asked for strategy, policy recommendations, or multi-step analysis
 - Decision support is SLOW - avoid using it unless the question clearly asks "how to", "what strategy", "recommend policy"
 
@@ -208,6 +256,15 @@ Thought: {agent_scratchpad}"""
                     try:
                         from ..tools.cisi_tool import analyze_critical_infrastructure
                         result = analyze_critical_infrastructure.invoke({"country": country, "max_hotspots": 10})
+                        
+                        # Resolve MAP_ID if present
+                        if "MAP_ID:" in result:
+                            parts = result.split("MAP_ID:")
+                            map_id = parts[1].strip()
+                            html = MapRegistry.get_map(map_id)
+                            if html:
+                                return f"{parts[0].strip()}\n\nMAP:{html}"
+                        
                         return result
                     except Exception as e:
                         logger.error(f"Error analyzing infrastructure: {e}", exc_info=True)
@@ -237,6 +294,14 @@ Thought: {agent_scratchpad}"""
                         from ..tools.geoepr_tool import plot_geoepr_map
                         map_result = plot_geoepr_map.invoke({"country": country, "plot_type": "country"})
                         
+                        # Resolve MAP_ID if present
+                        if "MAP_ID:" in map_result:
+                            parts = map_result.split("MAP_ID:")
+                            map_id = parts[1].strip()
+                            html = MapRegistry.get_map(map_id)
+                            if html:
+                                map_result = f"MAP:{html}"
+                        
                         # Generate contextual explanation
                         context_prompt = f"""Provide a brief 2-3 sentence introduction for a map showing ethnic groups in {country}.
 Mention major ethnic groups if you know them, and note the political significance of ethnic diversity in this country."""
@@ -253,18 +318,87 @@ Mention major ethnic groups if you know them, and note the political significanc
             result = self.agent_executor.invoke({"input": question})
             output = result["output"]
             
+            # CRITICAL: Check if knowledge_base_search was used and preserve citations
+            if "intermediate_steps" in result:
+                for action, observation in result["intermediate_steps"]:
+                    if isinstance(observation, str):
+                        # If knowledge_base_search was used and returned citations
+                        if hasattr(action, 'tool') and action.tool == "knowledge_base_search":
+                            logger.info(f"Found knowledge_base_search observation. Has References: {'References' in observation}")
+                            logger.info(f"Output has References: {'References' in output}")
+                            logger.info(f"Observation has citations: {'<sup>[' in observation}")
+                            logger.info(f"Output has citations: {'<sup>[' in output}")
+                            
+                            if "References" in observation:
+                                # Check if the output lost the references
+                                if "References" not in output:
+                                    # Agent removed citations! Use the original observation instead
+                                    logger.warning("Agent removed citations from knowledge_base_search output. Using original observation.")
+                                    output = observation
+                                    break
+                                elif "<sup>[" in observation and "<sup>[" not in output:
+                                    # Agent removed inline citations! Use the original observation
+                                    logger.warning("Agent removed inline citations. Using original observation.")
+                                    output = observation
+                                    break
+            
+            # Check for MAP_ID in output
+            if "MAP_ID:" in output:
+                parts = output.split("MAP_ID:")
+                map_id = parts[1].strip()
+                html = MapRegistry.get_map(map_id)
+                if html:
+                    return f"{parts[0].strip()}\n\nMAP:{html}"
+            
             # Check if any tool returned a map by looking at intermediate steps
             if "intermediate_steps" in result:
                 for action, observation in result["intermediate_steps"]:
-                    # If a tool returned MAP:, extract and prepend it
-                    if isinstance(observation, str) and observation.startswith("MAP:"):
-                        # Return the map followed by the agent's text
-                        return observation
+                    if isinstance(observation, str):
+                        # Check for MAP_ID in observation
+                        if "MAP_ID:" in observation:
+                            parts = observation.split("MAP_ID:")
+                            map_id = parts[1].strip()
+                            html = MapRegistry.get_map(map_id)
+                            if html:
+                                return f"{output}\n\nMAP:{html}"
             
             return output
+            
         except Exception as e:
             logger.error(f"Error in query: {e}", exc_info=True)
-            return f"I encountered an error processing your question: {e}"
+            return f"I encountered an error while processing your request: {str(e)}"
+
+    def get_country_summary(self, country: str) -> Dict[str, Any]:
+        """Get a comprehensive summary of a country"""
+        question = f"Provide a comprehensive summary of {country}, including key statistics, demographics, economy, and geography."
+        answer = self.query(question)
+        return {
+            "answer": answer,
+            "sources": [], # Enhanced engine integrates sources into the answer
+            "confidence": 1.0
+        }
+    
+    def compare_countries(self, country1: str, country2: str, aspect: str = "all") -> Dict[str, Any]:
+        """Compare two countries."""
+        if aspect == "all":
+            question = f"Compare {country1} and {country2} across all key metrics including population, economy, geography, and development indicators."
+        else:
+            question = f"Compare the {aspect} of {country1} and {country2}."
+        
+        answer = self.query(question)
+        return {
+            "answer": answer,
+            "sources": [],
+            "confidence": 1.0
+        }
+
+    def reload_chain(self):
+        """Reload the vector store"""
+        try:
+            self.vector_store_manager.load_vector_store()
+            logger.info("Vector store reloaded")
+        except Exception as e:
+            logger.warning(f"Could not reload vector store: {e}")
 
 
 def main():

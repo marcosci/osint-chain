@@ -13,7 +13,6 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from src.config import Config
-from src.langchain_engine.query_engine import CountryQueryEngine
 from src.langchain_engine.enhanced_query_engine import EnhancedQueryEngine
 from src.data_ingestion import DataLoader, DocumentProcessor, VectorStoreManager
 

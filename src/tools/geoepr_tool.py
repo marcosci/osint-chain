@@ -6,6 +6,7 @@ from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 import plotly.graph_objects as go
 import logging
+from .map_registry import MapRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,9 @@ def plot_geoepr_map(country: str, plot_type: str = "country") -> str:
     
     Shows geographic distribution of politically relevant ethnic groups with their
     settlement territories and political status (MONOPOLY, DOMINANT, DISCRIMINATED, etc.).
+    
+    ONLY use this tool if the user explicitly asks for a map, plot, or visualization.
+    DO NOT use this tool for general questions about the political situation or ethnic groups if no map is requested.
     
     Best for questions like:
     - "Show me a map of ethnic groups in Mali"
@@ -55,8 +59,11 @@ def plot_geoepr_map(country: str, plot_type: str = "country") -> str:
             # Convert to HTML
             html = fig.to_html(include_plotlyjs='cdn', div_id='geoepr_map')
             
-            # Return HTML wrapped in markdown for Streamlit
-            return f"MAP:{html}"
+            # Register map to avoid passing huge HTML to LLM
+            map_id = MapRegistry.register_map(html)
+            
+            # Return with MAP_ID: prefix
+            return f"MAP_ID:{map_id}"
         
         else:
             return "Invalid plot_type. Use 'country' for now."

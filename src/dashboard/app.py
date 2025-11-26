@@ -250,6 +250,98 @@ st.markdown("""
         margin: 1.5rem 0;
     }
     
+    /* ==================== SCIENTIFIC CITATION STYLING ==================== */
+    /* Superscript citations */
+    sup {
+        font-size: 0.75em;
+        line-height: 0;
+        position: relative;
+        vertical-align: baseline;
+        top: -0.5em;
+        color: #2563eb;
+        font-weight: 600;
+        padding: 0 0.1em;
+    }
+    
+    sup a {
+        color: #2563eb;
+        text-decoration: none;
+        border-bottom: 1px solid transparent;
+        transition: border-bottom-color 0.2s ease;
+    }
+    
+    sup a:hover {
+        border-bottom-color: #2563eb;
+    }
+    
+    /* References section styling */
+    hr + p strong:contains("References"),
+    p strong:contains("References") {
+        display: block;
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #09090b;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e4e4e7;
+    }
+    
+    /* Reference list items */
+    p:has(+ ol) strong:contains("References") + ol,
+    hr ~ ol {
+        list-style: decimal;
+        padding-left: 1.5rem;
+        margin-top: 0.75rem;
+    }
+    
+    hr ~ ol li,
+    p:contains("References") ~ p {
+        font-size: 0.875rem;
+        color: #52525b;
+        margin-bottom: 0.5rem;
+        line-height: 1.6;
+    }
+    
+    /* Scientific citation styling */
+    sup {
+        font-size: 0.7em;
+        font-weight: 600;
+        color: #2563eb;
+        cursor: help;
+    }
+    
+    sup a {
+        color: #2563eb !important;
+        text-decoration: none;
+    }
+    
+    /* References section styling */
+    .references-section {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 2px solid #e4e4e7;
+    }
+    
+    .references-section h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #09090b !important;
+        margin-bottom: 1rem;
+    }
+    
+    .references-section ol {
+        padding-left: 1.5rem;
+        margin: 0;
+    }
+    
+    .references-section li {
+        margin-bottom: 0.5rem;
+        color: #52525b !important;
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+    
     /* Checkbox styling */
     [data-testid="stCheckbox"] {
         padding: 0.5rem 0;
@@ -490,7 +582,7 @@ def main():
                     
                     # Display text first if present
                     if text_part:
-                        st.markdown(text_part)
+                        st.markdown(text_part, unsafe_allow_html=True)
                     
                     # Display map with border
                     if html_content:
@@ -500,7 +592,7 @@ def main():
                         st.components.v1.html(html_content, height=600, scrolling=True)
                         st.markdown("</div>", unsafe_allow_html=True)
                 else:
-                    st.markdown(content)
+                    st.markdown(content, unsafe_allow_html=True)
             else:
                 st.write(str(content))
             
@@ -571,7 +663,7 @@ def main():
                     
                     # Display text first if present
                     if text_part:
-                        st.markdown(text_part)
+                        st.markdown(text_part, unsafe_allow_html=True)
                     
                     # Display map with border
                     if html_content:
@@ -582,7 +674,7 @@ def main():
                         st.markdown("</div>", unsafe_allow_html=True)
                 else:
                     # Display answer - using st.markdown for better formatting
-                    st.markdown(answer)
+                    st.markdown(answer, unsafe_allow_html=True)
                 
                 # Display confidence
                 if show_confidence:
