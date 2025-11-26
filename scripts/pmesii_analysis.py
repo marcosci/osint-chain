@@ -12,7 +12,6 @@ from typing import Dict, List
 from openai import OpenAI
 from src.config import Config
 from src.data_ingestion.vector_store import VectorStoreManager
-from src.langchain_engine.query_engine import CountryQueryEngine
 
 # Import the indicator extraction function
 from list_indicators import extract_indicators_from_un_data, extract_wikipedia_topics
@@ -95,7 +94,8 @@ def get_domain_summary(country: str, domain: str, indicators: List[str], years: 
     year_filter = f" for the last {years} years" if years else ""
     print(f"\nQuerying RAG system for {domain} domain data{year_filter}...", file=sys.stderr)
     
-    # Initialize the query engine
+    # Initialize the query engine (import here to avoid circular dependency)
+    from src.langchain_engine.query_engine import CountryQueryEngine
     query_engine = CountryQueryEngine()
     
     # Create a detailed query

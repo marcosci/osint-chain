@@ -22,9 +22,9 @@ try:
     from list_indicators import extract_indicators_from_un_data
     from pmesii_analysis import group_indicators_by_pmesii, get_domain_summary
     PMESII_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     PMESII_AVAILABLE = False
-    logger.warning("PMESII analysis not available")
+    logger.warning(f"PMESII analysis not available: {e}")
 
 
 class CountryQueryEngine:
