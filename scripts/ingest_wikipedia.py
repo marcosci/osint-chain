@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 import pandas as pd
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
 from src.data_ingestion.vector_store import VectorStoreManager
 from src.config import Config
 import logging

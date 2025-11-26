@@ -14,6 +14,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from src.config import Config
 from src.langchain_engine.query_engine import CountryQueryEngine
+from src.langchain_engine.enhanced_query_engine import EnhancedQueryEngine
 from src.data_ingestion import DataLoader, DocumentProcessor, VectorStoreManager
 
 # Configure logging
@@ -69,8 +70,9 @@ async def startup_event():
     
     try:
         Config.validate()
-        query_engine = CountryQueryEngine()
-        logger.info("Country Query Engine initialized successfully")
+        # Use enhanced query engine with tools
+        query_engine = EnhancedQueryEngine()
+        logger.info("Enhanced Query Engine initialized successfully with decision support and mapping tools")
     except Exception as e:
         logger.error(f"Error initializing query engine: {str(e)}")
         logger.warning("API will start but queries may not work until data is loaded")
@@ -104,14 +106,17 @@ async def query(request: QueryRequest):
         raise HTTPException(status_code=503, detail="Query engine not initialized")
     
     try:
-        if request.country:
-            result = query_engine.query_country(request.country, request.question)
-        else:
-            result = query_engine.query(request.question)
+        # EnhancedQueryEngine returns a string directly
+        answer = query_engine.query(request.question)
         
-        return QueryResponse(**result)
+        # Format as QueryResponse
+        return QueryResponse(
+            answer=answer,
+            sources=[],
+            confidence=1.0
+        )
     except Exception as e:
-        logger.error(f"Query error: {str(e)}")
+        logger.error(f"Query error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

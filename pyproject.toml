@@ -1,0 +1,40 @@
+[tool.poetry]
+name = "geochain"
+version = "0.1.0"
+description = "Geopolitical intelligence analysis with LangChain"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11,<3.14"
+langchain = "^0.2.0"
+langchain-community = "^0.2.0"
+langchain-openai = "^0.1.0"
+langchain-core = "^0.2.0"
+langchain-text-splitters = "^0.2.0"
+openai = "^1.10.0"
+chromadb = "^0.4.22"
+sentence-transformers = "^2.2.2"
+pandas = "^2.1.4"
+numpy = "^1.26.2"
+pydantic = "^2.0.0"
+pydantic-settings = "^2.0.0"
+fastapi = "^0.109.0"
+uvicorn = "^0.25.0"
+python-multipart = "^0.0.6"
+plotly = "^5.18.0"
+streamlit = "^1.29.0"
+python-dotenv = "^1.0.0"
+aiofiles = "^23.2.1"
+requests = "^2.31.0"
+httpx = "^0.25.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+black = "^23.0.0"
+isort = "^5.12.0"
+mypy = "^1.5.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

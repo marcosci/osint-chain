@@ -1,5 +1,5 @@
 """
-Streamlit dashboard for GeoChain - Clean chat interface.
+Streamlit dashboard for GeoChain - Professional chat interface.
 """
 import streamlit as st
 import requests
@@ -8,21 +8,212 @@ from typing import Dict, Any
 # API Configuration
 API_URL = "http://localhost:8000"
 
+# User avatar as data URI
+USER_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='%2309090b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z'/%3E%3C/svg%3E"
+
+# AI assistant avatar as data URI
+AI_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='%2309090b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M8.625 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 0 1 .778-.332 48.294 48.294 0 0 0 5.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z'/%3E%3C/svg%3E"
+
 # Page configuration
 st.set_page_config(
-    page_title="GeoChain Chat",
-    page_icon="💬",
-    layout="centered",
-    initial_sidebar_state="collapsed"
+    page_title="ChatOSINT",
+    page_icon="🌍",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Custom CSS for clean look
+# Custom CSS inspired by shadcn/ui - clean, minimal, professional
 st.markdown("""
     <style>
+    /* Import Inter font for clean typography */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    /* Global styles */
+    html, body, [class*="css"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    
+    /* Main container */
+    .main {
+        background-color: #ffffff;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    /* Header styling */
+    h1 {
+        font-weight: 600;
+        color: #09090b;
+        letter-spacing: -0.02em;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background-color: #ffffff;
+        border-right: 1px solid #e4e4e7;
+        padding: 1.5rem 1rem;
+    }
+    
+    [data-testid="stSidebar"] h1, 
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3 {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #09090b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 1rem;
+    }
+    
+    /* Button styling - shadcn inspired */
     .stButton > button {
         width: 100%;
+        background-color: #ffffff;
+        color: #09090b;
+        border: 1px solid #e4e4e7;
+        border-radius: 0.375rem;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        font-size: 0.875rem;
+        transition: all 0.15s ease;
+        box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    }
+    
+    .stButton > button:hover {
+        background-color: #f4f4f5;
+        border-color: #d4d4d8;
+    }
+    
+    /* Chat message styling */
+    [data-testid="stChatMessage"] {
+        background-color: #ffffff;
+        border: 1px solid #e4e4e7;
         border-radius: 0.5rem;
-        padding: 0.5rem;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+    }
+    
+    [data-testid="stChatMessage"][data-testid*="user"] {
+        background-color: #f4f4f5;
+        border-color: #e4e4e7;
+    }
+    
+    /* Chat input styling */
+    [data-testid="stChatInput"] {
+        border-radius: 0.5rem;
+        border: 1px solid #e4e4e7;
+        background-color: #ffffff;
+        box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    }
+    
+    [data-testid="stChatInput"] textarea {
+        border: none;
+        background-color: transparent;
+        font-size: 0.95rem;
+    }
+    
+    [data-testid="stChatInput"] textarea:focus {
+        box-shadow: none;
+        border: none;
+    }
+    
+    /* Status indicators */
+    .element-container div[data-testid="stMarkdownContainer"] p {
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+    
+    /* Success/Error messages */
+    .stSuccess, .stError, .stWarning {
+        border-radius: 0.375rem;
+        border: 1px solid;
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+    }
+    
+    .stSuccess {
+        background-color: #f0fdf4;
+        border-color: #86efac;
+        color: #166534;
+    }
+    
+    .stError {
+        background-color: #fef2f2;
+        border-color: #fca5a5;
+        color: #991b1b;
+    }
+    
+    .stWarning {
+        background-color: #fffbeb;
+        border-color: #fde68a;
+        color: #92400e;
+    }
+    
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        background-color: #fafafa;
+        border: 1px solid #e4e4e7;
+        border-radius: 0.375rem;
+        font-weight: 500;
+        font-size: 0.875rem;
+        color: #09090b;
+    }
+    
+    /* Code blocks */
+    code {
+        background-color: #f4f4f5;
+        border: 1px solid #e4e4e7;
+        border-radius: 0.25rem;
+        padding: 0.125rem 0.375rem;
+        font-size: 0.875em;
+        color: #09090b;
+    }
+    
+    pre {
+        background-color: #fafafa;
+        border: 1px solid #e4e4e7;
+        border-radius: 0.375rem;
+        padding: 1rem;
+    }
+    
+    /* Divider styling */
+    hr {
+        border-color: #e4e4e7;
+        margin: 1.5rem 0;
+    }
+    
+    /* Checkbox styling */
+    [data-testid="stCheckbox"] {
+        padding: 0.5rem 0;
+    }
+    
+    /* Caption/small text */
+    .caption, small {
+        color: #71717a;
+        font-size: 0.8rem;
+    }
+    
+    /* Spinner */
+    .stSpinner > div {
+        border-color: #e4e4e7 #09090b #e4e4e7 #e4e4e7;
+    }
+    
+    /* Hide streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    [data-testid="stToolbar"] {visibility: hidden;}
+    .stDeployButton {display: none;}
+    
+    /* Metric cards for stats */
+    [data-testid="metric-container"] {
+        background-color: #ffffff;
+        border: 1px solid #e4e4e7;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -57,41 +248,70 @@ def query_api(question: str) -> Dict[str, Any]:
 def main():
     """Main chat application"""
     
-    # Settings in sidebar
+    # Settings in sidebar with professional styling
     with st.sidebar:
-        st.title("⚙️ Settings")
+        # Header with icon
+        st.markdown("### ⚙️ Settings")
         
-        # API status
+        # API status with clean indicator
         api_running = check_api_health()
         if api_running:
-            st.success("✅ API Connected")
+            st.markdown("""
+                <div style='background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 0.375rem; padding: 0.75rem; margin-bottom: 1rem;'>
+                    <span style='color: #166534; font-weight: 500; font-size: 0.875rem;'>● API Connected</span>
+                </div>
+            """, unsafe_allow_html=True)
         else:
-            st.error("⚠️ API Offline")
+            st.markdown("""
+                <div style='background-color: #fef2f2; border: 1px solid #fca5a5; border-radius: 0.375rem; padding: 0.75rem; margin-bottom: 1rem;'>
+                    <span style='color: #991b1b; font-weight: 500; font-size: 0.875rem;'>● API Offline</span>
+                </div>
+            """, unsafe_allow_html=True)
             st.caption("Start with: `python src/api/server.py`")
         
         st.divider()
         
-        # Chat settings
-        st.subheader("Chat Settings")
+        # Chat settings section
+        st.markdown("### Display Options")
         show_confidence = st.checkbox("Show confidence scores", value=True)
         show_sources = st.checkbox("Show sources", value=False)
         
         st.divider()
         
-        # Clear chat
-        if st.button("🗑️ Clear Chat History"):
+        # Actions section
+        st.markdown("### Actions")
+        if st.button("Clear Chat History", use_container_width=True):
             st.session_state.messages = []
             st.rerun()
         
         st.divider()
-        st.caption("GeoChain v1.0")
+        
+        # Footer
+        st.markdown("""
+            <div style='text-align: center; color: #71717a; font-size: 0.75rem; margin-top: 2rem;'>
+                <p style='margin: 0;'>ChatOSINT</p>
+                <p style='margin: 0.25rem 0 0 0;'>Version 1.0</p>
+            </div>
+        """, unsafe_allow_html=True)
     
-    # Main header
-    st.title("OSINT Chat")
+    # Main content area
+    # Header with professional styling
+    st.markdown("""
+        <div style='margin-bottom: 2rem;'>
+            <h1 style='font-size: 2rem; font-weight: 600; color: #09090b; margin-bottom: 0.5rem;'>
+                ChatOSINT
+            </h1>
+        </div>
+    """, unsafe_allow_html=True)
     
     # Check API
     if not check_api_health():
-        st.warning("⚠️ API server is not running. Please start it to use the chat.")
+        st.markdown("""
+            <div style='background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem;'>
+                <p style='color: #92400e; font-weight: 500; margin: 0 0 0.5rem 0;'>⚠️ API Server Not Running</p>
+                <p style='color: #71717a; font-size: 0.875rem; margin: 0;'>Please start the API server to use the chat interface.</p>
+            </div>
+        """, unsafe_allow_html=True)
         st.code("python src/api/server.py", language="bash")
         return
     
@@ -99,51 +319,109 @@ def main():
     if "messages" not in st.session_state:
         st.session_state.messages = []
     
+    # Display empty state if no messages
+    if not st.session_state.messages:
+        st.markdown("""
+            <div style='text-align: center; padding: 3rem 1rem; color: #71717a;'>
+                <div style='font-size: 3rem; margin-bottom: 1rem;'>💬</div>
+                <h3 style='color: #09090b; font-weight: 600; margin-bottom: 0.5rem;'>Start a Conversation</h3>
+                <p style='font-size: 0.9rem;'>Ask about geopolitical situations, ethnic groups, or request data visualizations.</p>
+                <div style='margin-top: 2rem; text-align: left; max-width: 600px; margin-left: auto; margin-right: auto;'>
+                    <p style='font-weight: 500; color: #09090b; margin-bottom: 0.75rem;'>Example queries:</p>
+                    <ul style='list-style: none; padding: 0;'>
+                        <li style='padding: 0.5rem; margin-bottom: 0.5rem; background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 0.375rem;'>
+                            "Show me a map of ethnic groups in Nigeria"
+                        </li>
+                        <li style='padding: 0.5rem; margin-bottom: 0.5rem; background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 0.375rem;'>
+                            "What is the political situation in Mali?"
+                        </li>
+                        <li style='padding: 0.5rem; margin-bottom: 0.5rem; background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 0.375rem;'>
+                            "Analyze ethnic power relations in Ethiopia"
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+    
     # Display chat history
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
+        # Custom avatar icons
+        avatar = USER_AVATAR if message["role"] == "user" else AI_AVATAR
+        
+        with st.chat_message(message["role"], avatar=avatar):
             # Display content with markdown for proper formatting
             content = message["content"]
             if isinstance(content, str):
-                st.markdown(content)
+                # Check if content contains a map
+                if "MAP:" in content:
+                    # Split content into text and map parts
+                    parts = content.split("MAP:", 1)
+                    text_part = parts[0].strip()
+                    html_content = parts[1] if len(parts) > 1 else ""
+                    
+                    # Display text first if present
+                    if text_part:
+                        st.markdown(text_part)
+                    
+                    # Display map with border
+                    if html_content:
+                        st.markdown("""
+                            <div style='border: 1px solid #e4e4e7; border-radius: 0.5rem; overflow: hidden; margin-top: 1rem;'>
+                        """, unsafe_allow_html=True)
+                        st.components.v1.html(html_content, height=600, scrolling=True)
+                        st.markdown("</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(content)
             else:
                 st.write(str(content))
             
             # Show confidence if enabled
             if message["role"] == "assistant" and show_confidence and "confidence" in message:
-                st.caption(f"Confidence: {message['confidence']*100:.0f}%")
+                confidence_pct = message['confidence'] * 100
+                confidence_color = "#166534" if confidence_pct >= 70 else "#92400e" if confidence_pct >= 40 else "#991b1b"
+                st.markdown(f"""
+                    <div style='margin-top: 0.75rem; padding: 0.5rem; background-color: #fafafa; border-radius: 0.25rem; border-left: 3px solid {confidence_color};'>
+                        <span style='color: #71717a; font-size: 0.8rem; font-weight: 500;'>Confidence: </span>
+                        <span style='color: {confidence_color}; font-size: 0.8rem; font-weight: 600;'>{confidence_pct:.0f}%</span>
+                    </div>
+                """, unsafe_allow_html=True)
             
             # Show sources if enabled
             if message["role"] == "assistant" and show_sources and "sources" in message:
                 if message["sources"]:
-                    with st.expander("📚 View Sources"):
+                    with st.expander("📚 View Sources", expanded=False):
                         for idx, source in enumerate(message["sources"], 1):
                             citation = source.get("citation", "Unknown Source")
-                            st.markdown(f"**[{idx}] {citation}**")
+                            st.markdown(f"**{idx}. {citation}**")
                             
                             # Show content preview
                             content = source.get("content", "")
                             if content:
-                                st.text(content)
+                                st.markdown(f"""
+                                    <div style='background-color: #fafafa; padding: 0.75rem; border-radius: 0.25rem; margin: 0.5rem 0; font-size: 0.85rem; color: #52525b;'>
+                                        {content[:300]}{'...' if len(content) > 300 else ''}
+                                    </div>
+                                """, unsafe_allow_html=True)
                             
-                            st.divider()
+                            if idx < len(message["sources"]):
+                                st.divider()
     
-    # Chat input
-    if prompt := st.chat_input("Ask about any country..."):
+    # Chat input with professional placeholder
+    if prompt := st.chat_input("Ask about geopolitical situations, ethnic groups, or request visualizations..."):
         # Add user message
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         # Display user message
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar=USER_AVATAR):
             st.markdown(prompt)
         
         # Get AI response
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
+        with st.chat_message("assistant", avatar=AI_AVATAR):
+            with st.spinner("Analyzing your query..."):
                 result = query_api(prompt)
             
             if "error" in result:
-                response = f"❌ Error: {result['error']}"
+                response = f"❌ **Error:** {result['error']}"
                 st.markdown(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
             else:
@@ -153,29 +431,59 @@ def main():
                 
                 # Debug: Check answer type and value
                 if not isinstance(answer, str):
-                    st.error(f"Debug: Answer type is {type(answer)}, converting to string")
                     answer = str(answer)
                 
-                # Display answer - using st.markdown for better formatting
-                st.markdown(answer)
+                # Check if answer contains a map
+                if "MAP:" in answer:
+                    # Split content into text and map parts
+                    parts = answer.split("MAP:", 1)
+                    text_part = parts[0].strip()
+                    html_content = parts[1] if len(parts) > 1 else ""
+                    
+                    # Display text first if present
+                    if text_part:
+                        st.markdown(text_part)
+                    
+                    # Display map with border
+                    if html_content:
+                        st.markdown("""
+                            <div style='border: 1px solid #e4e4e7; border-radius: 0.5rem; overflow: hidden; margin-top: 1rem;'>
+                        """, unsafe_allow_html=True)
+                        st.components.v1.html(html_content, height=600, scrolling=True)
+                        st.markdown("</div>", unsafe_allow_html=True)
+                else:
+                    # Display answer - using st.markdown for better formatting
+                    st.markdown(answer)
                 
                 # Display confidence
                 if show_confidence:
-                    st.caption(f"Confidence: {confidence*100:.0f}%")
+                    confidence_pct = confidence * 100
+                    confidence_color = "#166534" if confidence_pct >= 70 else "#92400e" if confidence_pct >= 40 else "#991b1b"
+                    st.markdown(f"""
+                        <div style='margin-top: 0.75rem; padding: 0.5rem; background-color: #fafafa; border-radius: 0.25rem; border-left: 3px solid {confidence_color};'>
+                            <span style='color: #71717a; font-size: 0.8rem; font-weight: 500;'>Confidence: </span>
+                            <span style='color: {confidence_color}; font-size: 0.8rem; font-weight: 600;'>{confidence_pct:.0f}%</span>
+                        </div>
+                    """, unsafe_allow_html=True)
                 
                 # Display sources
                 if show_sources and sources:
-                    with st.expander("📚 View Sources"):
+                    with st.expander("📚 View Sources", expanded=False):
                         for idx, source in enumerate(sources, 1):
                             citation = source.get("citation", "Unknown Source")
-                            st.markdown(f"**[{idx}] {citation}**")
+                            st.markdown(f"**{idx}. {citation}**")
                             
                             # Show content preview
                             content = source.get("content", "")
                             if content:
-                                st.text(content)
+                                st.markdown(f"""
+                                    <div style='background-color: #fafafa; padding: 0.75rem; border-radius: 0.25rem; margin: 0.5rem 0; font-size: 0.85rem; color: #52525b;'>
+                                        {content[:300]}{'...' if len(content) > 300 else ''}
+                                    </div>
+                                """, unsafe_allow_html=True)
                             
-                            st.divider()
+                            if idx < len(sources):
+                                st.divider()
                 
                 # Save to history
                 st.session_state.messages.append({

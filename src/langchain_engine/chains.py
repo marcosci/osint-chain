@@ -4,7 +4,7 @@ Specialized chains for different types of country queries.
 from typing import List, Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 import logging
 
 from ..config import Config

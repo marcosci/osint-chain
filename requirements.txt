@@ -1,18 +1,18 @@
 # Core LangChain and AI dependencies
-langchain==0.1.0
-langchain-community==0.0.13
-langchain-openai==0.0.5
+langchain>=0.2.0
+langchain-community>=0.2.0
+langchain-openai>=0.1.0
 openai>=1.10.0
 
 # Vector store and embeddings
 chromadb==0.4.22
-faiss-cpu==1.8.0
+faiss-cpu>=1.12.0
 sentence-transformers==2.2.2
 
 # Data processing
 pandas==2.1.4
 numpy==1.26.2
-pydantic<3,>=1
+pydantic>=1.10.0,<2.0.0
 
 # API and Dashboard
 fastapi==0.109.0
@@ -22,6 +22,11 @@ python-multipart==0.0.6
 # Visualization
 plotly==5.18.0
 streamlit==1.29.0
+
+# Geospatial
+geopandas>=0.14.0
+shapely>=2.0.0
+pyproj>=3.6.0
 
 # Utilities
 python-dotenv==1.0.0

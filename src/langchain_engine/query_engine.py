@@ -4,8 +4,8 @@ RAG-based query engine using LangChain.
 from typing import Optional, Dict, Any, List
 from langchain_openai import ChatOpenAI
 from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate
-from langchain.callbacks.base import BaseCallbackHandler
+from langchain_core.prompts import PromptTemplate
+from langchain_core.callbacks import BaseCallbackHandler
 import logging
 
 from ..config import Config

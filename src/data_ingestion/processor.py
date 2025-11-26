@@ -3,8 +3,8 @@ Document processing and chunking for LangChain.
 """
 import pandas as pd
 from typing import List, Dict, Any
-from langchain.docstore.document import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 import logging
 
 logger = logging.getLogger(__name__)
