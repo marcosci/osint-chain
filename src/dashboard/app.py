@@ -424,7 +424,7 @@ def query_api(question: str) -> Dict[str, Any]:
         response = requests.post(
             f"{API_URL}/query",
             json={"question": question},
-            timeout=120  # Increased timeout for CISI analysis
+            timeout=240  # Increased timeout for CISI analysis
         )
         
         if response.status_code == 200:

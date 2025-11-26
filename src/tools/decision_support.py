@@ -353,11 +353,21 @@ def decision_support_tool(question: str, context: Optional[str] = None) -> str:
     """
     Advanced decision support system for strategic policy and decision-making questions.
     
-    ONLY use this tool when the user explicitly asks for:
-    - Strategy development or policy recommendations
-    - "How to stabilize/improve/address" questions requiring multi-step analysis
-    - Comprehensive decision-making frameworks
-    - Stakeholder analysis or impact assessments
+    ONLY use this tool when the user EXPLICITLY asks for:
+    - "How to stabilize/improve/fix/address" questions
+    - "What strategy should we use"
+    - "Policy recommendations for"
+    - "What should we do about"
+    - Multi-step action plans or implementation strategies
+    
+    DO NOT use for:
+    - Informational queries ("what is", "tell me about", "describe", "explain")
+    - Political situation descriptions
+    - PMESII analysis or domain overviews
+    - Statistical or demographic information
+    - Historical or current state descriptions
+    
+    For those questions, use knowledge_base_search instead.
     
     Conducts a comprehensive 6-step analysis:
     1. Situation Analysis - Assess current state
@@ -366,9 +376,6 @@ def decision_support_tool(question: str, context: Optional[str] = None) -> str:
     4. Option Generation - Develop policy alternatives
     5. Impact Assessment - Evaluate consequences
     6. Recommendations - Provide actionable guidance
-    
-    DO NOT use for simple factual questions, statistics, or information retrieval.
-    Use knowledge_base_search for those instead.
     
     Args:
         question: The policy question to analyze
