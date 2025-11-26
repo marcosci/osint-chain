@@ -162,9 +162,18 @@ def rebuild_vector_store():
         except Exception as e:
             print(f"❌ Failed to ingest {dataset['name']}: {e}\n")
     
+    # Ingest Factbook JSON files
+    print("\n📚 Ingesting Factbook JSON files...")
+    try:
+        import scripts.ingest_factbook_json as ingest_factbook_json
+        ingest_factbook_json.main()
+        print("✅ Factbook JSON ingestion complete.")
+    except Exception as e:
+        print(f"❌ Factbook JSON ingestion failed: {e}")
+
     # Summary
     print("=" * 70)
-    print(f"✅ REBUILD COMPLETE: {success_count}/{len(datasets)} datasets ingested")
+    print(f"✅ REBUILD COMPLETE: {success_count}/{len(datasets)} datasets ingested (plus Factbook JSON)")
     print("=" * 70)
     
     if success_count > 0:
