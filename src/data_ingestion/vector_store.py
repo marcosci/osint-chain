@@ -33,23 +33,47 @@ class VectorStoreManager:
         Path(self.persist_path).mkdir(parents=True, exist_ok=True)
     
     def create_vector_store(self, documents: List[Document], 
-                           collection_name: str = "country_data") -> VectorStore:
+                           collection_name: str = "country_data",
+                           batch_size: int = 40000) -> VectorStore:
         """
         Create a new vector store from documents.
         
         Args:
             documents: List of LangChain documents
             collection_name: Name for the collection
+            batch_size: Maximum documents per batch (ChromaDB limit is ~41666)
         """
         logger.info(f"Creating {self.store_type} vector store with {len(documents)} documents")
         
+        total_docs = len(documents)
+        
         if self.store_type == "chroma":
-            self.vector_store = Chroma.from_documents(
-                documents=documents,
-                embedding=self.embeddings,
-                collection_name=collection_name,
-                persist_directory=self.persist_path
-            )
+            # Create with first batch or small dataset
+            if total_docs <= batch_size:
+                self.vector_store = Chroma.from_documents(
+                    documents=documents,
+                    embedding=self.embeddings,
+                    collection_name=collection_name,
+                    persist_directory=self.persist_path
+                )
+            else:
+                # Create with first batch
+                logger.info(f"Creating vector store with first {batch_size} documents...")
+                self.vector_store = Chroma.from_documents(
+                    documents=documents[:batch_size],
+                    embedding=self.embeddings,
+                    collection_name=collection_name,
+                    persist_directory=self.persist_path
+                )
+                
+                # Add remaining documents in batches
+                logger.info(f"Adding remaining {total_docs - batch_size} documents in batches...")
+                for i in range(batch_size, total_docs, batch_size):
+                    batch = documents[i:i + batch_size]
+                    logger.info(f"Adding batch {i//batch_size}/{(total_docs + batch_size - 1)//batch_size} ({len(batch)} docs)")
+                    self.vector_store.add_documents(batch)
+                    self.vector_store.persist()
+            
             logger.info(f"ChromaDB vector store created at {self.persist_path}")
         
         elif self.store_type == "faiss":
@@ -95,14 +119,33 @@ class VectorStoreManager:
         logger.info("Vector store loaded successfully")
         return self.vector_store
     
-    def add_documents(self, documents: List[Document]) -> None:
-        """Add documents to existing vector store"""
+    def add_documents(self, documents: List[Document], batch_size: int = 40000) -> None:
+        """Add documents to existing vector store in batches
+        
+        Args:
+            documents: Documents to add
+            batch_size: Maximum documents per batch (ChromaDB limit is ~41666)
+        """
         if self.vector_store is None:
             raise ValueError("Vector store not initialized. Create or load first.")
         
-        self.vector_store.add_documents(documents)
+        total_docs = len(documents)
         
-        # Persist if ChromaDB
+        # Process in batches if needed
+        if total_docs > batch_size:
+            logger.info(f"Processing {total_docs} documents in batches of {batch_size}")
+            for i in range(0, total_docs, batch_size):
+                batch = documents[i:i + batch_size]
+                logger.info(f"Adding batch {i//batch_size + 1}/{(total_docs + batch_size - 1)//batch_size} ({len(batch)} docs)")
+                self.vector_store.add_documents(batch)
+                
+                # Persist each batch if ChromaDB
+                if self.store_type == "chroma":
+                    self.vector_store.persist()
+        else:
+            self.vector_store.add_documents(documents)
+        
+        # Final persist
         if self.store_type == "chroma":
             self.vector_store.persist()
         elif self.store_type == "faiss":

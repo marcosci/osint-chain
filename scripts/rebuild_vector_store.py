@@ -118,7 +118,7 @@ def rebuild_vector_store():
             "description": "Country articles and information"
         })
     
-    # Global Leadership Project Data
+    # Global Leadership Project Data (LARGE - 72K+ docs)
     glp_file = Path("data/datasets/global_leaders/GlobalLeadershipProject_v1.parquet")
     if glp_file.exists():
         datasets.append({
@@ -137,6 +137,35 @@ def rebuild_vector_store():
                 'office1', 'office2', 'office3'
             ],
             "chunk_size": 1500
+        })
+    
+    # EPR (Ethnic Power Relations) Data
+    epr_core = Path("data/datasets/epr/EPR_Core_2021.csv")
+    if epr_core.exists():
+        datasets.append({
+            "path": epr_core,
+            "name": "EPR",
+            "year": "2021",
+            "description": "Ethnic Power Relations - ethnic groups and political representation"
+        })
+    
+    acd_epr = Path("data/datasets/epr/ACD2EPR_2021.csv")
+    if acd_epr.exists():
+        datasets.append({
+            "path": acd_epr,
+            "name": "ACD2EPR",
+            "year": "2021",
+            "description": "Armed Conflict to EPR mapping - conflicts and ethnic dimensions"
+        })
+    
+    # Migration Data
+    migration_file = Path("data/datasets/migration/ER-2021.csv")
+    if migration_file.exists():
+        datasets.append({
+            "path": migration_file,
+            "name": "Migration Data",
+            "year": "2021",
+            "description": "International migration and refugee statistics"
         })
     
     # Ingest all datasets
