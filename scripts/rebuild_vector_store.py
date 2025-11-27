@@ -33,6 +33,7 @@ def rebuild_vector_store():
     
     datasets = []
     success_count = 0
+    ingestion_log = []  # Track success/failure for each dataset
     
     # World Bank Data Sources
     
@@ -187,8 +188,10 @@ def rebuild_vector_store():
                 chunk_size=dataset.get('chunk_size', 1000)
             )
             success_count += 1
+            ingestion_log.append(f"✅ SUCCESS: {dataset['name']}")
             print(f"✅ Successfully ingested {dataset['name']}\n")
         except Exception as e:
+            ingestion_log.append(f"❌ FAILED: {dataset['name']} - {str(e)}")
             print(f"❌ Failed to ingest {dataset['name']}: {e}\n")
     
     # Ingest Factbook JSON files
@@ -196,9 +199,35 @@ def rebuild_vector_store():
     try:
         import scripts.ingest_factbook_json as ingest_factbook_json
         ingest_factbook_json.main()
+        ingestion_log.append("✅ SUCCESS: CIA World Factbook JSON")
         print("✅ Factbook JSON ingestion complete.")
     except Exception as e:
+        ingestion_log.append(f"❌ FAILED: CIA World Factbook JSON - {str(e)}")
         print(f"❌ Factbook JSON ingestion failed: {e}")
+
+    # Write ingestion status log
+    vector_store_path.mkdir(parents=True, exist_ok=True)
+    log_file = vector_store_path / "ingestion_status.txt"
+    
+    from datetime import datetime
+    with open(log_file, 'w') as f:
+        f.write("=" * 70 + "\n")
+        f.write("VECTOR STORE INGESTION STATUS\n")
+        f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("=" * 70 + "\n\n")
+        
+        f.write(f"Total Datasets Attempted: {len(datasets) + 1}\n")  # +1 for Factbook
+        f.write(f"Successfully Ingested: {success_count + (1 if 'SUCCESS: CIA World Factbook' in ingestion_log[-1] else 0)}\n")
+        f.write(f"Failed: {len(datasets) + 1 - success_count - (1 if 'SUCCESS: CIA World Factbook' in ingestion_log[-1] else 0)}\n\n")
+        
+        f.write("=" * 70 + "\n")
+        f.write("DETAILED STATUS\n")
+        f.write("=" * 70 + "\n\n")
+        
+        for log_entry in ingestion_log:
+            f.write(f"{log_entry}\n")
+    
+    print(f"\n📝 Ingestion status saved to: {log_file}")
 
     # Summary
     print("=" * 70)
