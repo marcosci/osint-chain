@@ -17,6 +17,7 @@ from ..tools.decision_support import decision_support_tool
 from ..tools.geoepr_tool import plot_geoepr_map
 from ..tools.cisi_tool import analyze_critical_infrastructure
 from ..tools.migration_tool import analyze_migration_patterns
+from ..tools.generic_map_tool import create_geographic_visualization
 from ..tools.map_registry import MapRegistry
 
 logger = logging.getLogger(__name__)
@@ -350,7 +351,7 @@ You have {len(sources_list)} source documents from different datasets. Your task
             factual queries."""
         )
         
-        return [rag_tool, decision_support_tool, plot_geoepr_map, analyze_critical_infrastructure, analyze_migration_patterns]
+        return [rag_tool, decision_support_tool, plot_geoepr_map, analyze_critical_infrastructure, analyze_migration_patterns, create_geographic_visualization]
     
     def _create_agent(self) -> AgentExecutor:
         """Create the agent executor using ReAct pattern."""
@@ -375,23 +376,42 @@ Final Answer: the final answer to the original input question
 
 IMPORTANT GUIDELINES:
 
-VISUALIZATION TOOLS - Use these for specific requests:
-1. plot_geoepr_map: ONLY for ethnic group mapping ("show map", "plot ethnic groups")
-2. analyze_critical_infrastructure: ONLY for CISI infrastructure analysis
-3. analyze_migration_patterns: REQUIRED for ANY query containing words: "migration", "refugee", "migrants", "asylum", "flows"
-   - Examples: "migration patterns for Ukraine", "show migration flows", "refugee data for Syria"
-   - This tool creates 3D visualizations with the ETH Zurich refugee dataset
-   - DO NOT use knowledge_base_search for migration/refugee queries - use analyze_migration_patterns instead
+TOOL SELECTION RULES - Choose ONE tool based on the query:
 
+VISUALIZATION TOOLS (choose the MOST SPECIFIC match):
+1. analyze_migration_patterns: ONLY for migration/refugee queries
+   - Triggers: "migration", "refugee", "migrants", "asylum", "flows"
+   - Examples: "migration patterns for Ukraine", "refugee data for Syria"
+   - DO NOT use for general queries about countries
+
+2. analyze_critical_infrastructure: ONLY for infrastructure analysis
+   - Triggers: "infrastructure", "CISI"
+   - Examples: "critical infrastructure in Ukraine", "infrastructure hotspots"
+   - DO NOT use for city/location queries
+
+3. plot_geoepr_map: ONLY for ethnic group mapping
+   - Triggers: "ethnic groups", "ethnic map", "GeoEPR"
+   - Examples: "show ethnic groups in Mali", "plot ethnic map"
+   - DO NOT use for general geographic queries
+
+4. create_geographic_visualization: For cities, locations, and general maps
+   - Triggers: "show cities", "urban centers", "map locations", "highlight country"
+   - Examples: "show urban centers in Nigeria", "major cities in Germany", "highlight Ukraine"
+   - Use this for ANY query about showing/mapping cities or general locations
+   - DO NOT combine with other visualization tools
+
+5. knowledge_base_search: For factual queries and information retrieval
+   - Triggers: "what is", "tell me about", "describe", "explain", PMESII requests
+   - Examples: "what is the GDP of Mali", "political situation in Ukraine", "PMESII for Nigeria"
+   - DO NOT use for visualization requests (cities, maps, infrastructure)
+
+CRITICAL RULES:
+- Use ONLY ONE tool per query - do not chain visualization tools
+- If query asks to "show" or "map" cities/locations → use create_geographic_visualization
+- If query asks about migration/refugees → use analyze_migration_patterns  
+- If query asks for facts/information → use knowledge_base_search
 - All visualization tools return text with MAP:<html> or MAP_ID:<id> at the end - include the ENTIRE response EXACTLY as-is in your Final Answer
-- The MAP:<html> part will be rendered as an interactive visualization
-- Use knowledge_base_search for general questions including:
-  * Factual queries and statistics
-  * Country information, demographics, economy, political situation
-  * PMESII analysis requests ("PMESII for Mali", "political situation", "economic overview", etc.)
-  * Any question asking "what is", "tell me about", "describe", "explain"
-- CRITICAL: When you use knowledge_base_search, it returns text with HTML superscript citations like <sup>[1]</sup> and a References section at the end
-- You MUST copy the ENTIRE Observation from knowledge_base_search directly into your Final Answer WITHOUT ANY CHANGES
+- When you use knowledge_base_search, copy the ENTIRE Observation directly into your Final Answer WITHOUT ANY CHANGES
 - DO NOT rewrite, summarize, paraphrase, or reorganize the answer from knowledge_base_search
 - DO NOT remove the <sup> tags or the References section
 - Simply copy the Observation text verbatim as your Final Answer

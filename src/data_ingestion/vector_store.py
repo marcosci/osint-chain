@@ -35,14 +35,14 @@ class VectorStoreManager:
     
     def create_vector_store(self, documents: List[Document], 
                            collection_name: str = "country_data",
-                           batch_size: int = 40000) -> VectorStore:
+                           batch_size: int = 5000) -> VectorStore:
         """
         Create a new vector store from documents.
         
         Args:
             documents: List of LangChain documents
             collection_name: Name for the collection
-            batch_size: Maximum documents per batch (ChromaDB limit is ~41666)
+            batch_size: Maximum documents per batch (ChromaDB limit is ~5461)
         """
         logger.info(f"Creating {self.store_type} vector store with {len(documents)} documents")
         
@@ -119,12 +119,12 @@ class VectorStoreManager:
         logger.info("Vector store loaded successfully")
         return self.vector_store
     
-    def add_documents(self, documents: List[Document], batch_size: int = 40000) -> None:
+    def add_documents(self, documents: List[Document], batch_size: int = 5000) -> None:
         """Add documents to existing vector store in batches
         
         Args:
             documents: Documents to add
-            batch_size: Maximum documents per batch (ChromaDB limit is ~41666)
+            batch_size: Maximum documents per batch (ChromaDB limit is ~5461)
         """
         if self.vector_store is None:
             raise ValueError("Vector store not initialized. Create or load first.")

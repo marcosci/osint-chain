@@ -241,11 +241,11 @@ class CISIAnalyzer:
             
             return f"Location: {lat:.4f}°, {lon:.4f}°"
             
-        except (GeocoderTimedOut, GeocoderServiceError) as e:
-            logger.warning(f"Geocoding failed: {e}")
-            return f"Location: {lat:.4f}°, {lon:.4f}°"
         except ImportError:
             logger.warning("geopy not installed, returning coordinates only")
+            return f"Location: {lat:.4f}°, {lon:.4f}°"
+        except Exception as e:
+            logger.warning(f"Geocoding failed: {e}")
             return f"Location: {lat:.4f}°, {lon:.4f}°"
     
     def create_interactive_map(

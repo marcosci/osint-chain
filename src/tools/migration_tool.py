@@ -127,7 +127,7 @@ def analyze_migration_patterns(country: str, visualization_type: str = "3d_arcs"
 
 
 def _get_country_coordinates(country_name: str) -> Optional[tuple]:
-    """Get lat/lon coordinates for a country."""
+    """Get lat/lon coordinates for a country using hardcoded list or geocoding."""
     # Extended country coordinates dictionary
     coordinates = {
         "ukraine": (48.3794, 31.1656),
@@ -143,6 +143,9 @@ def _get_country_coordinates(country_name: str) -> Optional[tuple]:
         "germany": (51.1657, 10.4515),
         "france": (46.2276, 2.2137),
         "united states": (37.0902, -95.7129),
+        "united states of america": (37.0902, -95.7129),
+        "usa": (37.0902, -95.7129),
+        "nicaragua": (12.8654, -85.2072),
         "turkey": (38.9637, 35.2433),
         "pakistan": (30.3753, 69.3451),
         "ethiopia": (9.1450, 40.4897),
@@ -200,7 +203,26 @@ def _get_country_coordinates(country_name: str) -> Optional[tuple]:
     }
     
     country_lower = country_name.lower()
-    return coordinates.get(country_lower)
+    
+    # Try hardcoded coordinates first
+    if country_lower in coordinates:
+        return coordinates[country_lower]
+    
+    # Fall back to geocoding
+    try:
+        from geopy.geocoders import Nominatim
+        geolocator = Nominatim(user_agent="geochain_migration_analyzer")
+        location = geolocator.geocode(country_name, timeout=10)
+        
+        if location:
+            logger.info(f"Geocoded {country_name}: {location.latitude}, {location.longitude}")
+            return (location.latitude, location.longitude)
+    except ImportError:
+        logger.warning("geopy not installed, cannot geocode missing countries")
+    except Exception as e:
+        logger.warning(f"Failed to geocode {country_name}: {e}")
+    
+    return None
 
 
 def _create_3d_arc_visualization(country: str, outflows: pd.DataFrame, inflows: pd.DataFrame, center_coords: tuple) -> str:
@@ -208,6 +230,7 @@ def _create_3d_arc_visualization(country: str, outflows: pd.DataFrame, inflows: 
     
     # Prepare data for ArcLayer
     arc_data = []
+    missing_countries = set()
     
     # Add outflows (red arcs - refugees leaving)
     for _, row in outflows.iterrows():
@@ -226,6 +249,11 @@ def _create_3d_arc_visualization(country: str, outflows: pd.DataFrame, inflows: 
                 "ethnic_group": row.get('groupname1', 'N/A') if pd.notna(row.get('groupname1')) else 'N/A',
                 "flow_type": "outflow",
             })
+        else:
+            if not origin_coords:
+                missing_countries.add(row['coo'])
+            if not dest_coords:
+                missing_countries.add(row['coa'])
     
     # Add inflows (blue arcs - refugees arriving)
     for _, row in inflows.iterrows():
@@ -244,9 +272,19 @@ def _create_3d_arc_visualization(country: str, outflows: pd.DataFrame, inflows: 
                 "ethnic_group": row.get('groupname1', 'N/A') if pd.notna(row.get('groupname1')) else 'N/A',
                 "flow_type": "inflow",
             })
+        else:
+            if not origin_coords:
+                missing_countries.add(row['coo'])
+            if not dest_coords:
+                missing_countries.add(row['coa'])
     
     if not arc_data:
-        return "<div>Unable to create visualization - country coordinates not available</div>"
+        missing_msg = f"Countries without coordinates: {', '.join(sorted(missing_countries))}" if missing_countries else ""
+        return f"<div>Unable to create visualization - no valid country coordinate pairs found. {missing_msg}</div>"
+    
+    # Log missing countries if any
+    if missing_countries:
+        logger.warning(f"Missing coordinates for countries: {missing_countries}")
     
     df = pd.DataFrame(arc_data)
     
