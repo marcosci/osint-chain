@@ -119,7 +119,7 @@ class VectorStoreManager:
         logger.info(f"Found {len(results)} similar documents for query")
         return results
     
-    def get_retriever(self, k: int = 4, search_type: str = "similarity", search_kwargs: dict = None):
+    def get_retriever(self, k: int = 50, search_type: str = "similarity", search_kwargs: dict = None):
         """
         Get a retriever for RAG chain.
         

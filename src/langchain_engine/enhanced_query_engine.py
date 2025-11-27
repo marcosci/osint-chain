@@ -1,18 +1,22 @@
 """
 Enhanced query engine with decision support capabilities.
 """
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from langchain_openai import ChatOpenAI
 from langchain.agents import AgentExecutor, create_react_agent
-from langchain_core.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain_core.tools import Tool
+from langchain_core.output_parsers import PydanticOutputParser
+from pydantic import BaseModel, Field
 import logging
+import re
 
 from ..config import Config
 from ..data_ingestion.vector_store import VectorStoreManager
 from ..tools.decision_support import decision_support_tool
 from ..tools.geoepr_tool import plot_geoepr_map
 from ..tools.cisi_tool import analyze_critical_infrastructure
+from ..tools.migration_tool import analyze_migration_patterns
 from ..tools.map_registry import MapRegistry
 
 logger = logging.getLogger(__name__)
@@ -61,10 +65,17 @@ class EnhancedQueryEngine:
     def _create_tools(self) -> List[Tool]:
         """Create the tool set for the agent."""
         
-        # RAG retrieval tool
+        # Helper function to extract citations from text
+        def _extract_citations(text: str) -> List[int]:
+            """Extract unique citation numbers from answer text"""
+            pattern = r'<sup>\[(\d+)\]</sup>'
+            matches = re.findall(pattern, text)
+            return sorted(set(int(m) for m in matches))
+        
+        # RAG retrieval tool with multi-source citation
         def rag_search(query: str) -> str:
             """
-            Search the knowledge base for factual information.
+            Search the knowledge base for factual information from MULTIPLE diverse sources.
             Best for queries like:
             - "What is the population of France?"
             - "Tell me about Germany's economy"
@@ -75,66 +86,187 @@ class EnhancedQueryEngine:
                 if self.vector_store_manager.vector_store is None:
                     return "Knowledge base is not initialized. No information available."
 
-                retriever = self.vector_store_manager.get_retriever(k=10)
-                docs = retriever.get_relevant_documents(query)
+                # STEP 1: Use MMR (Maximal Marginal Relevance) for diversity
+                # MMR balances relevance with diversity to avoid getting all docs from same source
+                try:
+                    # Try MMR first for better diversity
+                    retriever = self.vector_store_manager.vector_store.as_retriever(
+                        search_type="mmr",
+                        search_kwargs={
+                            "k": 100,  # Total docs to return
+                            "fetch_k": 200,  # Candidates to consider
+                            "lambda_mult": 0.3  # Balance: 0=max diversity, 1=max relevance
+                        }
+                    )
+                    all_docs = retriever.get_relevant_documents(query)
+                except Exception as mmr_error:
+                    logger.warning(f"MMR search failed, falling back to similarity: {mmr_error}")
+                    # Fallback to regular similarity search
+                    retriever = self.vector_store_manager.get_retriever(k=30)
+                    all_docs = retriever.get_relevant_documents(query)
+                # STEP 2: Multi-query retrieval for even better source diversity
+                # Generate related queries to fetch docs from different angles
+                related_queries = []
+                if "political" in query.lower() or "situation" in query.lower():
+                    related_queries = [
+                        query,
+                        query.replace("political", "ethnic"),
+                        query.replace("situation", "demographics"),
+                        query.replace("situation", "economy")
+                    ]
+                elif "economy" in query.lower() or "economic" in query.lower():
+                    related_queries = [
+                        query,
+                        f"{query.split()[0]} GDP",
+                        f"{query.split()[0]} population",
+                        f"{query.split()[0]} trade"
+                    ]
+                else:
+                    related_queries = [query]
                 
-                if not docs:
+                # Retrieve docs for each related query
+                all_docs = []
+                seen_content = set()  # Deduplication
+                
+                for rq in related_queries[:3]:  # Limit to 3 query variants
+                    try:
+                        docs = retriever.get_relevant_documents(rq)
+                        for doc in docs[:15]:  # Top 15 per query
+                            content_hash = hash(doc.page_content[:200])
+                            if content_hash not in seen_content:
+                                all_docs.append(doc)
+                                seen_content.add(content_hash)
+                    except Exception as e:
+                        logger.warning(f"Failed to retrieve for '{rq}': {e}")
+                        continue
+                
+                if not all_docs:
                     return "No relevant information found in the knowledge base."
                 
-                # Build sources list for citation
-                sources_list = []
+                logger.info(f"Multi-query retrieved {len(all_docs)} unique documents")
+                
+                # STEP 3: Diversify sources - group by source and prioritize unique sources
+                sources_seen = {}  # source_key -> list of docs
+                for doc in all_docs:
+                    metadata = doc.metadata
+                    source = metadata.get('source_name', 'Unknown')
+                    year = metadata.get('source_year', '?')
+                    source_key = f"{source}_{year}"
+                    
+                    if source_key not in sources_seen:
+                        sources_seen[source_key] = []
+                    sources_seen[source_key].append(doc)
+                
+                # Log diversity metrics
+                logger.info(f"RAG found {len(all_docs)} docs from {len(sources_seen)} unique sources: {list(sources_seen.keys())}")
+                
+                # STEP 4: Build diverse document list with STRICT round-robin selection
+                # This ensures we get at least 1 doc from each source before taking 2nd from any source
+                docs = []
+                source_keys = list(sources_seen.keys())
+                
+                # If we have very few sources, try to get more docs per source
+                if len(source_keys) <= 2:
+                    max_per_source = 8  # More depth when few sources
+                elif len(source_keys) <= 4:
+                    max_per_source = 4
+                else:
+                    max_per_source = 2  # More breadth when many sources
+                
+                # Round-robin through sources to ensure maximum diversity
+                for round_num in range(max_per_source):
+                    for source_key in source_keys:
+                        source_docs = sources_seen[source_key]
+                        if round_num < len(source_docs) and len(docs) < 15:
+                            docs.append(source_docs[round_num])
+                
+                # Log final selection
+                final_sources = {}
+                for doc in docs:
+                    sk = f"{doc.metadata.get('source_name', 'Unknown')}_{doc.metadata.get('source_year', '?')}"
+                    final_sources[sk] = final_sources.get(sk, 0) + 1
+                logger.info(f"RAG final selection: {len(docs)} docs from {len(final_sources)} sources: {final_sources}")
+                
+                # STEP 5: Build context with unique document IDs and metadata
+                sources_list = []  # For references section
                 context_parts = []
-                for i, doc in enumerate(docs, 1):
+                doc_id_to_content = {}  # For citation verification
+                citation_num = 1
+                
+                for doc in docs:
                     metadata = doc.metadata
                     source = metadata.get('source_name', 'Unknown')
                     year = metadata.get('source_year', '?')
                     
-                    # Store source info
-                    sources_list.append(f"{source} ({year})")
+                    # Create unique identifier
+                    source_label = f"{source} ({year})"
+                    sources_list.append(source_label)
                     
-                    # Add to context with reference number
+                    # Store for verification
+                    doc_content = doc.page_content[:1000]  # Increased from 900
+                    doc_id_to_content[citation_num] = doc_content
+                    
+                    # Add to context with clear source demarcation
                     context_parts.append(
-                        f"[Source {i}] {source} ({year}):\n{doc.page_content[:800]}"
+                        f"[Source {citation_num}] {source_label}:\n{doc_content}\n"
                     )
+                    citation_num += 1
                 
-                context = "\n\n".join(context_parts)
+                context = "\n".join(context_parts)
                 
                 # Build references section upfront
                 references_section = "\n\n---\n**References**\n"
                 for i, source in enumerate(sources_list, 1):
                     references_section += f"{i}. {source}\n"
                 
-                # Use LLM to synthesize answer with scientific citations
-                prompt = f"""Based on the following context, answer the question comprehensively.
+                # STEP 6: Enhanced prompt for multi-source citation
+                citation_prompt = f"""You are a research analyst providing evidence-based answers with rigorous citations.
 
-CRITICAL CITATION REQUIREMENTS:
-1. You MUST cite sources using superscript format: <sup>[1]</sup>, <sup>[2]</sup>, etc.
-2. Place citations IMMEDIATELY after the fact, claim, or statistic, BEFORE any punctuation
-3. Examples of correct citation placement:
-   - "Mali has multiple armed groups<sup>[1]</sup>."
-   - "The Tuareg groups include CMA and FPLA<sup>[1][2]</sup>."
-   - "According to the data, there are 7 ethnic groups<sup>[3]</sup> in the region."
-4. Use the exact source numbers [1], [2], [3], etc. that match the context below
-5. You can combine citations: <sup>[1][2]</sup> or <sup>[1,2]</sup>
-6. DO NOT include a References section in your answer - it will be added automatically
+You have {len(sources_list)} source documents from different datasets. Your task is to:
+1. Answer the question comprehensively using information from MULTIPLE DIVERSE SOURCES
+2. Cite EVERY factual claim with inline superscript citations: <sup>[1]</sup>, <sup>[2]</sup>, etc.
+3. Use AT LEAST 3-5 DIFFERENT sources in your answer (spread citations across different source numbers)
+4. Place citations IMMEDIATELY after the fact/claim, BEFORE punctuation
+5. Verify each claim exists in the source before citing
 
-Context with Source Numbers:
+📚 AVAILABLE SOURCES (use multiple):
+{chr(10).join([f"{i}. {src}" for i, src in enumerate(sources_list, 1)])}
+
+📝 CITATION RULES:
+- ✅ GOOD: "Mali has 18 ethnic groups<sup>[1]</sup> with varying political status<sup>[3]</sup>."
+- ✅ GOOD: "The GDP is $15.3B<sup>[2]</sup> and population is 21M<sup>[4]</sup>."
+- ❌ BAD: Only using <sup>[1]</sup> repeatedly
+- ❌ BAD: No citations or missing citations
+
+📖 SOURCE CONTENT:
 {context}
 
-Question: {query}
+❓ QUESTION: {query}
 
-Provide a detailed answer with inline superscript citations:"""
+📊 ANSWER (with citations from AT LEAST 3 different sources):"""
                 
-                response = self.llm.invoke(prompt)
+                # STEP 7: Generate answer with citations
+                response = self.llm.invoke(citation_prompt)
                 answer_text = response.content
                 
-                # Always append the references section
+                # STEP 8: Verify citations (extract and validate)
+                cited_sources = _extract_citations(answer_text)
+                if cited_sources:
+                    logger.info(f"Answer cites {len(cited_sources)} different sources: {cited_sources}")
+                    
+                    # Check diversity
+                    if len(cited_sources) < 2:
+                        logger.warning(f"Low citation diversity: only {len(cited_sources)} sources cited")
+                else:
+                    logger.warning("No citations found in answer!")
+                
+                # STEP 9: Build and append references section
                 answer_text += references_section
                 
                 return answer_text
                 
             except Exception as e:
-                logger.error(f"Error in RAG search: {e}")
+                logger.error(f"Error in RAG search: {e}", exc_info=True)
                 return f"Error retrieving information: {e}"
         
         rag_tool = Tool(
@@ -145,7 +277,7 @@ Provide a detailed answer with inline superscript citations:"""
             factual queries."""
         )
         
-        return [rag_tool, decision_support_tool, plot_geoepr_map, analyze_critical_infrastructure]
+        return [rag_tool, decision_support_tool, plot_geoepr_map, analyze_critical_infrastructure, analyze_migration_patterns]
     
     def _create_agent(self) -> AgentExecutor:
         """Create the agent executor using ReAct pattern."""
@@ -169,11 +301,18 @@ Thought: I now know the final answer
 Final Answer: the final answer to the original input question
 
 IMPORTANT GUIDELINES:
-- For map requests ("show map", "plot ethnic groups", etc.), you MUST use the plot_geoepr_map tool
-- For critical infrastructure queries, you MUST use the analyze_critical_infrastructure tool
-- Both tools return text with MAP:<html> or MAP_ID:<id> at the end - include the ENTIRE response EXACTLY as-is in your Final Answer
+
+VISUALIZATION TOOLS - Use these for specific requests:
+1. plot_geoepr_map: ONLY for ethnic group mapping ("show map", "plot ethnic groups")
+2. analyze_critical_infrastructure: ONLY for CISI infrastructure analysis
+3. analyze_migration_patterns: REQUIRED for ANY query containing words: "migration", "refugee", "migrants", "asylum", "flows"
+   - Examples: "migration patterns for Ukraine", "show migration flows", "refugee data for Syria"
+   - This tool creates 3D visualizations with the ETH Zurich refugee dataset
+   - DO NOT use knowledge_base_search for migration/refugee queries - use analyze_migration_patterns instead
+
+- All visualization tools return text with MAP:<html> or MAP_ID:<id> at the end - include the ENTIRE response EXACTLY as-is in your Final Answer
 - The MAP:<html> part will be rendered as an interactive visualization
-- Use knowledge_base_search for MOST questions including:
+- Use knowledge_base_search for general questions including:
   * Factual queries and statistics
   * Country information, demographics, economy, political situation
   * PMESII analysis requests ("PMESII for Mali", "political situation", "economic overview", etc.)
