@@ -73,7 +73,6 @@ class VectorStoreManager:
                     batch = documents[i:i + batch_size]
                     logger.info(f"Adding batch {i//batch_size}/{(total_docs + batch_size - 1)//batch_size} ({len(batch)} docs)")
                     self.vector_store.add_documents(batch)
-                    self.vector_store.persist()
             
             logger.info(f"ChromaDB vector store created at {self.persist_path}")
         
@@ -139,17 +138,11 @@ class VectorStoreManager:
                 batch = documents[i:i + batch_size]
                 logger.info(f"Adding batch {i//batch_size + 1}/{(total_docs + batch_size - 1)//batch_size} ({len(batch)} docs)")
                 self.vector_store.add_documents(batch)
-                
-                # Persist each batch if ChromaDB
-                if self.store_type == "chroma":
-                    self.vector_store.persist()
         else:
             self.vector_store.add_documents(documents)
         
-        # Final persist
-        if self.store_type == "chroma":
-            self.vector_store.persist()
-        elif self.store_type == "faiss":
+        # ChromaDB auto-persists in langchain-chroma, FAISS needs manual save
+        if self.store_type == "faiss":
             self.vector_store.save_local(self.persist_path)
         
         logger.info(f"Added {len(documents)} documents to vector store")
