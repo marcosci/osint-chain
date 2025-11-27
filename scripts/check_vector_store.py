@@ -51,7 +51,7 @@ def check_vector_store():
         
         try:
             retriever = vsm.get_retriever(k=30)
-            docs = retriever.get_relevant_documents(query)
+            docs = retriever.invoke(query)
             
             # Analyze sources
             sources = []

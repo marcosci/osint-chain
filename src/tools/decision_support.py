@@ -51,7 +51,7 @@ class DecisionSupportSystem:
         
         try:
             retriever = self.vector_store_manager.get_retriever(k=k)
-            docs = retriever.get_relevant_documents(query)
+            docs = retriever.invoke(query)
             
             if not docs:
                 return "No relevant documents found."

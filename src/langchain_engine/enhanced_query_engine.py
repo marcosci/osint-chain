@@ -3,7 +3,7 @@ Enhanced query engine with decision support capabilities.
 """
 from typing import Optional, List, Dict, Any, Tuple
 from langchain_openai import ChatOpenAI
-from langchain.agents import AgentExecutor, create_react_agent
+from langchain_classic.agents import create_react_agent, AgentExecutor
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain_core.tools import Tool
 from langchain_core.output_parsers import PydanticOutputParser
@@ -109,12 +109,12 @@ class EnhancedQueryEngine:
                             "lambda_mult": 0.3  # Balance: 0=max diversity, 1=max relevance
                         }
                     )
-                    all_docs = retriever.get_relevant_documents(query)
+                    all_docs = retriever.invoke(query)
                 except Exception as mmr_error:
                     logger.warning(f"MMR search failed, falling back to similarity: {mmr_error}")
                     # Fallback to regular similarity search
                     retriever = self.vector_store_manager.get_retriever(k=30)
-                    all_docs = retriever.get_relevant_documents(query)
+                    all_docs = retriever.invoke(query)
                 # STEP 2: Multi-query retrieval for even better source diversity
                 # Generate related queries to fetch docs from different angles
                 related_queries = []
@@ -141,7 +141,7 @@ class EnhancedQueryEngine:
                 
                 for rq in related_queries[:3]:  # Limit to 3 query variants
                     try:
-                        docs = retriever.get_relevant_documents(rq)
+                        docs = retriever.invoke(rq)
                         for doc in docs[:15]:  # Top 15 per query
                             content_hash = hash(doc.page_content[:200])
                             if content_hash not in seen_content:
@@ -188,7 +188,7 @@ class EnhancedQueryEngine:
                             }
                         )
                         
-                        extra_docs = diverse_retriever.get_relevant_documents(query)
+                        extra_docs = diverse_retriever.invoke(query)
                         logger.info(f"Broad retrieval got {len(extra_docs)} additional documents")
                         
                         # Merge with existing, avoiding duplicates
@@ -761,7 +761,7 @@ Mention major ethnic groups if you know them, and note the political significanc
             
             # Use the existing RAG retrieval with fewer documents for speed
             retriever = self.vector_store_manager.get_retriever(k=5)  # Reduced from 10 to 5
-            docs = retriever.get_relevant_documents(query)
+            docs = retriever.invoke(query)
             
             if not docs:
                 return f"No data found for {domain} domain in {country}."

@@ -4,7 +4,8 @@ Vector store management using ChromaDB or FAISS.
 from typing import List, Optional
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma, FAISS
+from langchain_chroma import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain_core.vectorstores import VectorStore
 import logging
 from pathlib import Path
