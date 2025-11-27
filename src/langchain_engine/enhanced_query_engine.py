@@ -630,7 +630,7 @@ Mention major ethnic groups if you know them, and note the political significanc
             return (country, domain) if country else None
         
         # Check for domain-specific queries with analysis keywords
-        analysis_keywords = ["analysis", "analyze", "assessment", "overview", "summary", "examine", "review"]
+        analysis_keywords = ["analysis", "analyze", "analyse", "assessment", "overview", "summary", "examine", "review"]
         has_analysis = any(kw in question_lower for kw in analysis_keywords)
         
         if has_analysis:
