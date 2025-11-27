@@ -650,7 +650,7 @@ Mention major ethnic groups if you know them, and note the political significanc
             return (country, domain) if country else None
         
         # Check for domain-specific queries with analysis keywords
-        analysis_keywords = ["analysis", "analyze", "assessment", "overview", "summary", "examine", "review"]
+        analysis_keywords = ["analysis", "analyze", "analyse", "assessment", "overview", "summary", "examine", "review"]
         has_analysis = any(kw in question_lower for kw in analysis_keywords)
         
         if has_analysis:
@@ -786,12 +786,17 @@ Mention major ethnic groups if you know them, and note the political significanc
             if not docs:
                 return f"No data found for {domain} domain in {country}."
             
-            # Format context from retrieved documents (more concise)
+            # Format context from retrieved documents with source tracking
             context_parts = []
+            sources_list = []
             for i, doc in enumerate(docs, 1):
-                source = doc.metadata.get('source', 'Unknown')
+                source_name = doc.metadata.get('source_name', doc.metadata.get('source', 'Unknown'))
+                source_year = doc.metadata.get('source_year', '?')
+                source_label = f"{source_name} ({source_year})"
+                sources_list.append(source_label)
+                
                 content = doc.page_content[:400]  # Reduced from 500 to 400
-                context_parts.append(f"[{i}] {source}: {content}")
+                context_parts.append(f"[{i}] {source_label}: {content}")
             
             context = "\n\n".join(context_parts)
             
@@ -807,14 +812,21 @@ Mention major ethnic groups if you know them, and note the political significanc
             response = client.chat.completions.create(
                 model="anthropic/claude-3.5-haiku",  # Faster model
                 messages=[
-                    {"role": "system", "content": "Provide concise PMESII domain analysis."},
-                    {"role": "user", "content": f"{query}\n\nContext:\n{context}\n\nProvide key insights (max 300 words)."}
+                    {"role": "system", "content": "Provide concise PMESII domain analysis with inline citations using superscript [1], [2], etc."},
+                    {"role": "user", "content": f"{query}\n\nContext:\n{context}\n\nProvide key insights with inline citations (max 300 words)."}
                 ],
                 temperature=0.2,
                 max_tokens=800  # Reduced from 2000 to 800
             )
             
-            return response.choices[0].message.content.strip()
+            summary = response.choices[0].message.content.strip()
+            
+            # Append references section
+            references = "\n\n---\n**References**\n"
+            for i, source in enumerate(sources_list, 1):
+                references += f"{i}. {source}\n"
+            
+            return summary + references
             
         except Exception as e:
             logger.error(f"Error getting domain summary: {e}", exc_info=True)
