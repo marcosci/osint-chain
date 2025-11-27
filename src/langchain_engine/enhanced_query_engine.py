@@ -21,6 +21,17 @@ from ..tools.map_registry import MapRegistry
 
 logger = logging.getLogger(__name__)
 
+# PMESII domain keywords
+PMESII_DOMAINS = {
+    "political": ["political", "politics", "government", "governance", "parliament", "elections", "diplomacy"],
+    "military": ["military", "defense", "security", "armed forces", "peacekeeping"],
+    "economic": ["economic", "economy", "gdp", "trade", "employment", "unemployment", "inflation"],
+    "social": ["social", "population", "demographics", "health", "education", "mortality", "fertility"],
+    "infrastructure": ["infrastructure", "transportation", "energy", "utilities", "water", "sanitation"],
+    "information": ["information", "media", "communications", "internet", "telecommunications"],
+    "geo": ["geography", "geographic", "environment", "climate", "natural resources", "emissions"]
+}
+
 
 class EnhancedQueryEngine:
     """
@@ -374,6 +385,18 @@ Thought: {agent_scratchpad}"""
                 any(keyword in question_lower for keyword in location_keywords)
             )
             
+            # Check for PMESII analysis queries
+            pmesii_trigger = self._detect_pmesii_query(question)
+            if pmesii_trigger:
+                country, domain = pmesii_trigger
+                logger.info(f"Detected PMESII query for {country}, domain: {domain or 'all'}")
+                try:
+                    result = self._perform_pmesii_analysis(country, domain)
+                    return result
+                except Exception as e:
+                    logger.error(f"Error in PMESII analysis: {e}", exc_info=True)
+                    # Fall through to regular agent handling
+            
             # Check for infrastructure queries
             infrastructure_keywords = ['infrastructure', 'cisi', 'critical infrastructure']
             is_infrastructure_request = any(keyword in question_lower for keyword in infrastructure_keywords)
@@ -510,6 +533,210 @@ Mention major ethnic groups if you know them, and note the political significanc
         except Exception as e:
             logger.error(f"Error in query: {e}", exc_info=True)
             return f"I encountered an error while processing your request: {str(e)}"
+    
+    def _detect_pmesii_query(self, question: str) -> Optional[tuple]:
+        """Detect if query is asking for PMESII analysis.
+        
+        Returns:
+            Tuple of (country, domain) if PMESII query detected, None otherwise
+        """
+        question_lower = question.lower()
+        
+        # Check for explicit PMESII mention
+        if "pmesii" in question_lower or "pmesi" in question_lower:
+            # Try to extract country name (case-insensitive)
+            import re
+            patterns = [
+                r'(?:for|in|of)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)',
+                r'([A-Za-z]+(?:\s+[A-Za-z]+)?)\s+pmesii',
+            ]
+            
+            country = None
+            for pattern in patterns:
+                match = re.search(pattern, question, re.IGNORECASE)
+                if match:
+                    country = match.group(1).strip()
+                    break
+            
+            # Check for specific domain
+            domain = None
+            for dom, keywords in PMESII_DOMAINS.items():
+                if any(kw in question_lower for kw in keywords):
+                    domain = dom
+                    break
+            
+            return (country, domain) if country else None
+        
+        # Check for domain-specific queries with analysis keywords
+        analysis_keywords = ["analysis", "analyze", "assessment", "overview", "summary", "examine", "review"]
+        has_analysis = any(kw in question_lower for kw in analysis_keywords)
+        
+        if has_analysis:
+            # Look for domain keywords
+            detected_domain = None
+            for domain, keywords in PMESII_DOMAINS.items():
+                if any(kw in question_lower for kw in keywords):
+                    detected_domain = domain
+                    break
+            
+            if detected_domain:
+                # Try to extract country (more flexible patterns, case-insensitive)
+                import re
+                patterns = [
+                    r'(?:for|in|of)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)',  # "for Ukraine", "of Germany"
+                    r'([A-Za-z]+(?:\s+[A-Za-z]+)?)\s+(?:economy|economic|politics|political|military|social)',  # "Ukraine economy"
+                    r'(?:economy|economic|politics|political|military|social)\s+of\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)',  # "economy of Ukraine"
+                    r'(?:the|analyze|examine)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)',  # "analyze Ukraine"
+                ]
+                
+                for pattern in patterns:
+                    match = re.search(pattern, question, re.IGNORECASE)
+                    if match:
+                        candidate = match.group(1).strip()
+                        # Filter out common words that aren't countries
+                        stop_words = {'the', 'last', 'years', 'year', 'data', 'recent', 'current'}
+                        if candidate.lower() not in stop_words:
+                            return (candidate, detected_domain)
+        
+        return None
+    
+    def _perform_pmesii_analysis(self, country: str, domain: Optional[str] = None) -> str:
+        """Perform PMESII analysis for a country.
+        
+        Args:
+            country: Country name
+            domain: Optional specific domain (e.g., 'economic', 'social')
+            
+        Returns:
+            Analysis result string
+        """
+        try:
+            import sys
+            from pathlib import Path
+            sys.path.append(str(Path(__file__).parent.parent.parent / "scripts"))
+            
+            from list_indicators import extract_indicators_from_un_data
+            from pmesii_analysis import group_indicators_by_pmesii
+            
+            logger.info(f"Performing PMESII analysis for {country}, domain: {domain or 'all'}")
+            
+            # Extract indicators
+            indicators = extract_indicators_from_un_data(country)
+            indicators_list = sorted(list(indicators))
+            
+            if not indicators_list:
+                return f"No indicators found for {country} in the database."
+            
+            # Group by PMESII domains (uses internal cache)
+            grouped = group_indicators_by_pmesii(indicators_list, country, use_cache=True)
+            
+            if not grouped:
+                return f"Failed to group indicators for {country}."
+            
+            # Get total indicators count
+            total_indicators = sum(len(inds) for inds in grouped.values())
+            
+            if not grouped:
+                return f"Failed to group indicators for {country}."
+            
+            if domain:
+                # Specific domain analysis
+                domain_cap = domain.capitalize()
+                if domain_cap in grouped:
+                    domain_indicators = grouped[domain_cap]
+                    if not domain_indicators:
+                        return f"No indicators found for {domain_cap} domain in {country}."
+                    
+                    # Get detailed summary using RAG query
+                    summary = self._get_domain_summary_via_rag(country, domain_cap, domain_indicators)
+                    
+                    return f"**PMESII {domain_cap} Analysis for {country}**\n\n{summary}"
+                else:
+                    available = ', '.join(grouped.keys())
+                    return f"No {domain} indicators found for {country}. Available domains: {available}"
+            else:
+                # Overview of all domains
+                domain_counts = {dom: len(inds) for dom, inds in grouped.items()}
+                overview = f"**PMESII Analysis Overview for {country}**\n\n"
+                overview += f"Total Indicators: {total_indicators}\n\n"
+                overview += "**Indicators by Domain:**\n"
+                for dom, count in sorted(domain_counts.items(), key=lambda x: -x[1]):
+                    overview += f"- **{dom}**: {count} indicators\n"
+                
+                overview += "\n*Ask for a specific domain (e.g., 'economic analysis for " + country + "') for detailed insights.*"
+                
+                return overview
+                
+        except ImportError as e:
+            logger.error(f"PMESII analysis not available: {e}")
+            return "PMESII analysis is not available. Please ensure the required modules are installed."
+        except Exception as e:
+            logger.error(f"PMESII analysis error: {str(e)}", exc_info=True)
+            return f"Error performing PMESII analysis: {str(e)}"
+    
+    def _get_domain_summary_via_rag(self, country: str, domain: str, indicators: List[str]) -> str:
+        """Get domain summary by querying the RAG system directly.
+        
+        Args:
+            country: Country name
+            domain: PMESII domain name
+            indicators: List of indicators to analyze
+            
+        Returns:
+            Summary text
+        """
+        # Create a concise query
+        indicator_list = ", ".join(indicators[:8])  # Use first 8 indicators
+        if len(indicators) > 8:
+            indicator_list += f" (+{len(indicators) - 8} more)"
+        
+        query = f"{domain} analysis for {country}: {indicator_list}. Provide key trends and statistics."
+
+        try:
+            # Check if vector store is available
+            if self.vector_store_manager.vector_store is None:
+                return f"Knowledge base is not initialized. Cannot retrieve {domain} data."
+            
+            # Use the existing RAG retrieval with fewer documents for speed
+            retriever = self.vector_store_manager.get_retriever(k=5)  # Reduced from 10 to 5
+            docs = retriever.get_relevant_documents(query)
+            
+            if not docs:
+                return f"No data found for {domain} domain in {country}."
+            
+            # Format context from retrieved documents (more concise)
+            context_parts = []
+            for i, doc in enumerate(docs, 1):
+                source = doc.metadata.get('source', 'Unknown')
+                content = doc.page_content[:400]  # Reduced from 500 to 400
+                context_parts.append(f"[{i}] {source}: {content}")
+            
+            context = "\n\n".join(context_parts)
+            
+            # Generate summary using faster LLM
+            from openai import OpenAI
+            from src.config import Config
+            
+            client = OpenAI(
+                api_key=Config.OPENROUTER_API_KEY,
+                base_url=Config.OPENROUTER_BASE_URL
+            )
+            
+            response = client.chat.completions.create(
+                model="anthropic/claude-3.5-haiku",  # Faster model
+                messages=[
+                    {"role": "system", "content": "Provide concise PMESII domain analysis."},
+                    {"role": "user", "content": f"{query}\n\nContext:\n{context}\n\nProvide key insights (max 300 words)."}
+                ],
+                temperature=0.2,
+                max_tokens=800  # Reduced from 2000 to 800
+            )
+            
+            return response.choices[0].message.content.strip()
+            
+        except Exception as e:
+            logger.error(f"Error getting domain summary: {e}", exc_info=True)
+            return f"Error retrieving {domain} summary: {str(e)}"
 
     def get_country_summary(self, country: str) -> Dict[str, Any]:
         """Get a comprehensive summary of a country"""

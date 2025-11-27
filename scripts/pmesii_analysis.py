@@ -27,41 +27,57 @@ PMESII_DOMAINS = {
     "Geo": "Geography, natural resources, environment, climate, land use, biodiversity, emissions, pollution, terrain, natural disasters"
 }
 
+# Module-level cache for PMESII grouped indicators
+_PMESII_CACHE: Dict[str, Dict[str, List[str]]] = {}
 
-def group_indicators_by_pmesii(indicators: List[str], country: str) -> Dict[str, List[str]]:
+
+def group_indicators_by_pmesii(indicators: List[str], country: str, use_cache: bool = True) -> Dict[str, List[str]]:
     """
     Use LLM to group indicators into PMESII domains.
+    Uses faster model for better performance.
+    Caches results to avoid re-classification.
+    
+    Args:
+        indicators: List of indicator names to classify
+        country: Country name
+        use_cache: Whether to use cached results (default: True)
+    
+    Returns:
+        Dictionary mapping domain names to lists of indicators
     """
+    # Check cache first
+    cache_key = country.lower()
+    if use_cache and cache_key in _PMESII_CACHE:
+        print(f"Using cached PMESII grouping for {country}", file=sys.stderr)
+        return _PMESII_CACHE[cache_key]
     client = OpenAI(
         api_key=Config.OPENROUTER_API_KEY,
         base_url=Config.OPENROUTER_BASE_URL
     )
     
-    # Prepare the prompt
-    domain_descriptions = "\n".join([f"- {domain}: {desc}" for domain, desc in PMESII_DOMAINS.items()])
+    # Prepare the prompt with concise domain descriptions
+    domain_descriptions = "\n".join([f"- {domain}: {desc.split(',')[0]}" for domain, desc in PMESII_DOMAINS.items()])
     
     indicators_text = "\n".join([f"- {ind}" for ind in indicators])
     
-    prompt = f"""You are an intelligence analyst. Group the following indicators for {country} into PMESII domains:
+    prompt = f"""Group these {country} indicators into PMESII domains. Return JSON only.
 
-PMESII Domains:
+Domains:
 {domain_descriptions}
 
-Indicators to classify:
+Indicators:
 {indicators_text}
 
-Return a JSON object where keys are domain names (Political, Military, Economic, Social, Infrastructure, Information, Geo) and values are arrays of indicator names that belong to that domain. Each indicator should be assigned to exactly ONE most appropriate domain.
-
-Return ONLY valid JSON, no other text."""
+JSON format: {{"Political": [...], "Military": [...], "Economic": [...], "Social": [...], "Infrastructure": [...], "Information": [...], "Geo": [...]}}"""
 
     try:
         response = client.chat.completions.create(
-            model="anthropic/claude-3.5-sonnet",
+            model="anthropic/claude-3.5-haiku",  # Faster, cheaper model
             messages=[
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.3,
-            max_tokens=4000
+            temperature=0.1,  # Lower for more consistent results
+            max_tokens=3000  # Reduced tokens
         )
         
         result_text = response.choices[0].message.content.strip()
@@ -73,11 +89,46 @@ Return ONLY valid JSON, no other text."""
             result_text = result_text.split("```")[1].split("```")[0].strip()
         
         grouped = json.loads(result_text)
+        
+        # Cache the result
+        if use_cache:
+            _PMESII_CACHE[cache_key] = grouped
+            print(f"Cached PMESII grouping for {country}", file=sys.stderr)
+        
         return grouped
         
     except Exception as e:
         print(f"Error grouping indicators: {e}", file=sys.stderr)
         return {}
+
+
+def clear_pmesii_cache(country: str = None) -> None:
+    """Clear the PMESII cache for a specific country or all countries.
+    
+    Args:
+        country: Country name to clear from cache, or None to clear all
+    """
+    global _PMESII_CACHE
+    if country:
+        cache_key = country.lower()
+        if cache_key in _PMESII_CACHE:
+            del _PMESII_CACHE[cache_key]
+            print(f"Cleared PMESII cache for {country}", file=sys.stderr)
+    else:
+        _PMESII_CACHE.clear()
+        print("Cleared entire PMESII cache", file=sys.stderr)
+
+
+def get_pmesii_cache_stats() -> Dict[str, int]:
+    """Get statistics about the PMESII cache.
+    
+    Returns:
+        Dictionary with cache statistics
+    """
+    return {
+        "cached_countries": len(_PMESII_CACHE),
+        "countries": list(_PMESII_CACHE.keys())
+    }
 
 
 def get_domain_summary(country: str, domain: str, indicators: List[str], years: int = None) -> str:
