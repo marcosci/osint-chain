@@ -246,7 +246,6 @@ You have {len(sources_list)} source documents from different datasets. Your task
 📝 CITATION RULES:
 - ✅ GOOD: "Mali has 18 ethnic groups<sup>[1]</sup> with varying political status<sup>[3]</sup>."
 - ✅ GOOD: "The GDP is $15.3B<sup>[2]</sup> and population is 21M<sup>[4]</sup>."
-- ❌ BAD: Only using <sup>[1]</sup> repeatedly
 - ❌ BAD: No citations or missing citations
 
 📖 SOURCE CONTENT:

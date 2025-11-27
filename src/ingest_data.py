@@ -44,20 +44,62 @@ def ingest_data(file_path: str, text_columns: list = None, chunk_size: int = 100
         # Determine source metadata
         file_name = Path(file_path).name
         
-        # Auto-detect source name if not provided
+        # Auto-detect source name and enhanced metadata
+        source_type = "unknown"
+        source_description = ""
+        topics = []
+        
         if source_name is None:
             if 'wikipedia' in file_path.lower():
                 source_name = "Wikipedia"
+                source_type = "encyclopedia"
+                source_description = "Collaborative encyclopedia with country overviews"
+                topics = ["geography", "history", "demographics", "general"]
             elif 'worldbank' in file_path.lower() or 'wb_' in file_path.lower():
                 source_name = "World Bank Open Data"
+                source_type = "statistical"
+                source_description = "Official economic and development indicators"
+                topics = ["economy", "development", "statistics"]
+                # Detect specific indicator from filename
+                if 'gdp' in file_path.lower():
+                    topics.append("gdp")
+                if 'population' in file_path.lower():
+                    topics.append("population")
+                if 'life_expectancy' in file_path.lower():
+                    topics.append("health")
             elif 'un_' in file_path.lower() or 'un.' in file_path.lower() or 'SYB' in file_path:
                 source_name = "UN Data"
+                source_type = "statistical"
+                source_description = "United Nations statistical yearbook data"
+                topics = ["economy", "demographics", "statistics"]
             elif 'global_leaders' in file_path.lower() or 'globalleadership' in file_path.lower():
                 source_name = "Global Leadership Project"
+                source_type = "biographical"
+                source_description = "Comprehensive database of political leaders worldwide"
+                topics = ["politics", "leadership", "biography", "government"]
+            elif 'epr' in file_path.lower() or 'ethnic' in file_path.lower():
+                source_name = "EPR"
+                source_type = "research"
+                source_description = "Ethnic Power Relations dataset"
+                topics = ["politics", "ethnicity", "conflict", "governance"]
+            elif 'factbook' in file_path.lower() or 'cia' in file_path.lower():
+                source_name = "CIA World Factbook"
+                source_type = "intelligence"
+                source_description = "Official US intelligence country profiles"
+                topics = ["geography", "politics", "economy", "military", "demographics"]
+            elif 'migration' in file_path.lower() or 'refugee' in file_path.lower():
+                source_name = "Migration Data"
+                source_type = "statistical"
+                source_description = "International migration and refugee statistics"
+                topics = ["migration", "refugees", "demographics"]
             elif 'countries.csv' in file_path:
                 source_name = "GeoChain Country Database"
+                source_type = "reference"
+                source_description = "Country reference data"
+                topics = ["geography", "reference"]
             else:
                 source_name = file_name
+                source_type = "other"
         
         # Auto-detect year from filename or content
         if source_year is None:
@@ -65,15 +107,20 @@ def ingest_data(file_path: str, text_columns: list = None, chunk_size: int = 100
             year_match = re.search(r'20\d{2}', file_path)
             if year_match:
                 source_year = year_match.group(0)
+            else:
+                source_year = "unknown"
         
-        # Build base metadata
+        # Build enhanced base metadata
         base_metadata = {
             "source_name": source_name,
+            "source_year": source_year,
+            "source_type": source_type,
+            "source_description": source_description,
             "source_file": file_name,
-            "source_path": file_path
+            "source_path": file_path,
+            "topics": ",".join(topics) if topics else "general",
+            "ingestion_date": str(Path(__file__).parent.parent / "data" / "vector_store")
         }
-        if source_year:
-            base_metadata["source_year"] = source_year
         
         # Process data based on type
         if isinstance(data, str):

@@ -57,6 +57,37 @@ class DocumentProcessor:
             # Build metadata with base metadata first
             metadata = base_metadata.copy() if base_metadata else {}
             metadata["row_id"] = idx
+            metadata["doc_id"] = f"{base_metadata.get('source_name', 'unknown')}_{idx}"
+            
+            # Add content type hints for better retrieval
+            content_lower = content.lower()
+            metadata["content_hints"] = []
+            if any(term in content_lower for term in ["gdp", "economy", "economic", "trade", "income"]):
+                metadata["content_hints"].append("economic")
+            if any(term in content_lower for term in ["population", "demographic", "birth", "death", "age"]):
+                metadata["content_hints"].append("demographic")
+            if any(term in content_lower for term in ["political", "government", "president", "minister", "party"]):
+                metadata["content_hints"].append("political")
+            if any(term in content_lower for term in ["ethnic", "group", "minority", "tribe"]):
+                metadata["content_hints"].append("ethnic")
+            if any(term in content_lower for term in ["conflict", "war", "violence", "crisis"]):
+                metadata["content_hints"].append("conflict")
+            if any(term in content_lower for term in ["military", "defense", "armed forces", "security"]):
+                metadata["content_hints"].append("military")
+            if any(term in content_lower for term in ["education", "literacy", "school", "university"]):
+                metadata["content_hints"].append("education")
+            if any(term in content_lower for term in ["health", "medical", "disease", "mortality"]):
+                metadata["content_hints"].append("health")
+            
+            metadata["content_hints"] = ",".join(metadata["content_hints"]) if metadata["content_hints"] else "general"
+            
+            # Extract country mentions for better filtering
+            countries_mentioned = []
+            for col in metadata_columns:
+                if pd.notna(row[col]) and any(keyword in col.lower() for keyword in ["country", "nation", "state"]):
+                    countries_mentioned.append(str(row[col]))
+            if countries_mentioned:
+                metadata["countries"] = ",".join(countries_mentioned[:3])  # Limit to 3
             
             # Add column data to metadata
             for col in metadata_columns:
@@ -94,6 +125,23 @@ class DocumentProcessor:
             # Create metadata with base metadata
             metadata = base_metadata.copy() if base_metadata else {}
             metadata["item_id"] = idx
+            metadata["doc_id"] = f"{base_metadata.get('source_name', 'unknown')}_{idx}"
+            
+            # Add content hints
+            content_lower = content.lower()
+            metadata["content_hints"] = []
+            if any(term in content_lower for term in ["gdp", "economy", "economic", "trade", "income"]):
+                metadata["content_hints"].append("economic")
+            if any(term in content_lower for term in ["population", "demographic", "birth", "death", "age"]):
+                metadata["content_hints"].append("demographic")
+            if any(term in content_lower for term in ["political", "government", "president", "minister", "party"]):
+                metadata["content_hints"].append("political")
+            if any(term in content_lower for term in ["ethnic", "group", "minority", "tribe"]):
+                metadata["content_hints"].append("ethnic")
+            
+            metadata["content_hints"] = ",".join(metadata["content_hints"]) if metadata["content_hints"] else "general"
+            
+            # Add other item data to metadata
             metadata.update({k: str(v) for k, v in item.items() 
                            if k not in (text_fields or [])})
             

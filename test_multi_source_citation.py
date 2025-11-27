@@ -33,7 +33,7 @@ def test_query(question: str, expected_min_sources: int = 3):
     try:
         response = requests.post(
             API_URL,
-            json={"query": question},
+            json={"question": question},
             timeout=60
         )
         
