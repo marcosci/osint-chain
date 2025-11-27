@@ -24,6 +24,18 @@ def extract_references(text: str) -> List[str]:
         return [line.strip() for line in lines if line.strip() and line.strip() != '---']
     return []
 
+def extract_unique_sources(references: List[str]) -> Set[str]:
+    """Extract unique source names (without citation numbers and years)"""
+    unique_sources = set()
+    for ref in references:
+        # Format: "1. Source Name (Year)"
+        # Extract just "Source Name"
+        if '. ' in ref:
+            source_with_year = ref.split('. ', 1)[1] if '. ' in ref else ref
+            source_name = source_with_year.split(' (')[0] if ' (' in source_with_year else source_with_year
+            unique_sources.add(source_name.strip())
+    return unique_sources
+
 def test_query(question: str, expected_min_sources: int = 3):
     """Test a query and analyze citation diversity"""
     print(f"\n{'='*80}")
@@ -47,32 +59,30 @@ def test_query(question: str, expected_min_sources: int = 3):
         # Extract citations
         citations = extract_citations(answer)
         references = extract_references(answer)
+        unique_sources = extract_unique_sources(references)
         
         print(f"\n📊 CITATION ANALYSIS:")
-        print(f"  • Total unique sources cited: {len(citations)}")
         print(f"  • Citation numbers used: {sorted(citations)}")
-        print(f"  • Total references listed: {len(references)}")
+        print(f"  • Total reference entries: {len(references)}")
+        print(f"  • Unique source names: {len(unique_sources)}")
+        print(f"  • Sources: {', '.join(sorted(unique_sources))}")
         
         # Show references
         if references:
-            print(f"\n📚 REFERENCES:")
+            print(f"\n📚 REFERENCES (first 10):")
             for ref in references[:10]:  # Show first 10
                 print(f"  {ref}")
             if len(references) > 10:
                 print(f"  ... and {len(references) - 10} more")
         
-        # Check diversity
-        if len(citations) >= expected_min_sources:
-            print(f"\n✅ PASSED: Used {len(citations)} different sources (expected ≥{expected_min_sources})")
+        # Check diversity based on UNIQUE SOURCE NAMES (not citation numbers)
+        if len(unique_sources) >= expected_min_sources:
+            print(f"\n✅ PASSED: Used {len(unique_sources)} unique sources (expected ≥{expected_min_sources})")
+            return True
         else:
-            print(f"\n⚠️  WARNING: Only {len(citations)} sources cited (expected ≥{expected_min_sources})")
-        
-        # Show answer excerpt (first 500 chars)
-        print(f"\n📝 ANSWER EXCERPT:")
-        answer_text = answer.split("---")[0].strip()  # Get text before references
-        print(f"{answer_text[:500]}...")
-        
-        return len(citations) >= expected_min_sources
+            print(f"\n❌ FAILED: Only {len(unique_sources)} unique sources (expected ≥{expected_min_sources})")
+            print(f"   Note: Same source cited multiple times doesn't count as diversity")
+            return False
         
     except requests.exceptions.Timeout:
         print("❌ Request timed out after 60 seconds")

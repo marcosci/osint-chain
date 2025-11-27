@@ -16,7 +16,7 @@ AI_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='
 
 # Page configuration
 st.set_page_config(
-    page_title="ChatOSINT",
+    page_title="AtlasINT",
     page_icon="🌍",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -507,7 +507,7 @@ def main():
         # Footer
         st.markdown("""
             <div style='text-align: center; color: #71717a; font-size: 0.75rem; margin-top: 2rem;'>
-                <p style='margin: 0;'>ChatOSINT</p>
+                <p style='margin: 0;'>AtlasINT</p>
                 <p style='margin: 0.25rem 0 0 0;'>Version 1.0</p>
             </div>
         """, unsafe_allow_html=True)
@@ -517,7 +517,7 @@ def main():
     st.markdown("""
         <div style='margin-bottom: 2rem;'>
             <h1 style='font-size: 2rem; font-weight: 600; color: #09090b; margin-bottom: 0.5rem;'>
-                ChatOSINT
+                AtlasINT
             </h1>
         </div>
     """, unsafe_allow_html=True)

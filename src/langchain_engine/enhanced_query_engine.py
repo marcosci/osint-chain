@@ -171,6 +171,54 @@ class EnhancedQueryEngine:
                 # Log diversity metrics
                 logger.info(f"RAG found {len(all_docs)} docs from {len(sources_seen)} unique sources: {list(sources_seen.keys())}")
                 
+                # ENFORCE MINIMUM SOURCE DIVERSITY (>2 sources required)
+                MIN_SOURCES = 3
+                if len(sources_seen) < MIN_SOURCES:
+                    logger.warning(f"Only {len(sources_seen)} sources found (need {MIN_SOURCES}+). Attempting broader retrieval...")
+                    
+                    # Try a broader, more diverse retrieval strategy
+                    try:
+                        # Use very high diversity (lambda=0) to maximize source variety
+                        diverse_retriever = self.vector_store_manager.vector_store.as_retriever(
+                            search_type="mmr",
+                            search_kwargs={
+                                "k": 150,  # Get many more docs
+                                "fetch_k": 500,  # Consider many candidates
+                                "lambda_mult": 0.0  # Maximum diversity (ignore relevance)
+                            }
+                        )
+                        
+                        extra_docs = diverse_retriever.get_relevant_documents(query)
+                        logger.info(f"Broad retrieval got {len(extra_docs)} additional documents")
+                        
+                        # Merge with existing, avoiding duplicates
+                        for doc in extra_docs:
+                            content_hash = hash(doc.page_content[:200])
+                            if content_hash not in seen_content:
+                                all_docs.append(doc)
+                                seen_content.add(content_hash)
+                                
+                                # Update sources_seen
+                                metadata = doc.metadata
+                                source = metadata.get('source_name', 'Unknown')
+                                year = metadata.get('source_year', '?')
+                                source_key = f"{source}_{year}"
+                                
+                                if source_key not in sources_seen:
+                                    sources_seen[source_key] = []
+                                sources_seen[source_key].append(doc)
+                        
+                        logger.info(f"After broad retrieval: {len(sources_seen)} unique sources: {list(sources_seen.keys())}")
+                        
+                    except Exception as e:
+                        logger.warning(f"Broad retrieval failed: {e}")
+                    
+                    # If still insufficient, warn user
+                    if len(sources_seen) < MIN_SOURCES:
+                        logger.error(f"INSUFFICIENT SOURCE DIVERSITY: Only {len(sources_seen)} sources available for this query")
+                        logger.error("Consider rebuilding vector store with more diverse datasets")
+                        # Continue anyway but with warning in response
+                
                 # STEP 4: Build diverse document list with STRICT round-robin selection
                 # This ensures we get at least 1 doc from each source before taking 2nd from any source
                 docs = []
@@ -261,14 +309,29 @@ You have {len(sources_list)} source documents from different datasets. Your task
                 
                 # STEP 8: Verify citations (extract and validate)
                 cited_sources = _extract_citations(answer_text)
+                unique_source_names = set()
+                
+                # Map citation numbers to unique source names
+                for cite_num in cited_sources:
+                    if cite_num <= len(sources_list):
+                        source_name = sources_list[cite_num - 1].split(' (')[0]  # Remove year
+                        unique_source_names.add(source_name)
+                
                 if cited_sources:
-                    logger.info(f"Answer cites {len(cited_sources)} different sources: {cited_sources}")
+                    logger.info(f"Answer cites {len(cited_sources)} different citation numbers: {cited_sources}")
+                    logger.info(f"Answer uses {len(unique_source_names)} unique source names: {unique_source_names}")
                     
-                    # Check diversity
-                    if len(cited_sources) < 2:
-                        logger.warning(f"Low citation diversity: only {len(cited_sources)} sources cited")
+                    # ENFORCE: Minimum 3 unique sources cited
+                    MIN_CITED_SOURCES = 3
+                    if len(unique_source_names) < MIN_CITED_SOURCES:
+                        logger.error(f"CITATION ENFORCEMENT FAILED: Only {len(unique_source_names)} unique sources cited (need {MIN_CITED_SOURCES}+)")
+                        
+                        # Add warning to answer
+                        warning = f"\n\n⚠️ **Note**: This answer cites only {len(unique_source_names)} source(s). Ideally, answers should cite {MIN_CITED_SOURCES}+ diverse sources. Consider rebuilding the vector store with more datasets.\n"
+                        answer_text = warning + answer_text
                 else:
-                    logger.warning("No citations found in answer!")
+                    logger.error("CITATION ENFORCEMENT FAILED: No citations found in answer!")
+                    answer_text = "\n\n⚠️ **Note**: This answer lacks proper citations.\n" + answer_text
                 
                 # STEP 9: Build and append references section
                 answer_text += references_section
