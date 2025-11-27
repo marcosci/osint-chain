@@ -194,16 +194,26 @@ def rebuild_vector_store():
             ingestion_log.append(f"❌ FAILED: {dataset['name']} - {str(e)}")
             print(f"❌ Failed to ingest {dataset['name']}: {e}\n")
     
-    # Ingest Factbook JSON files
-    print("\n📚 Ingesting Factbook JSON files...")
+    # Ingest Factbook JSON files with chunking
+    print("\n📚 Ingesting CIA World Factbook (chunked)...")
+    print("This will create semantic chunks for better retrieval...")
     try:
-        import scripts.ingest_factbook_json as ingest_factbook_json
-        ingest_factbook_json.main()
-        ingestion_log.append("✅ SUCCESS: CIA World Factbook JSON")
-        print("✅ Factbook JSON ingestion complete.")
+        import subprocess
+        result = subprocess.run(
+            [sys.executable, "scripts/ingest_factbook_chunked.py"],
+            cwd=Path(__file__).parent.parent,
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            ingestion_log.append("✅ SUCCESS: CIA World Factbook (chunked)")
+            print("✅ Factbook chunked ingestion complete.")
+        else:
+            ingestion_log.append(f"❌ FAILED: CIA World Factbook (chunked) - {result.stderr}")
+            print(f"❌ Factbook chunked ingestion failed: {result.stderr}")
     except Exception as e:
-        ingestion_log.append(f"❌ FAILED: CIA World Factbook JSON - {str(e)}")
-        print(f"❌ Factbook JSON ingestion failed: {e}")
+        ingestion_log.append(f"❌ FAILED: CIA World Factbook (chunked) - {str(e)}")
+        print(f"❌ Factbook chunked ingestion failed: {e}")
 
     # Write ingestion status log
     vector_store_path.mkdir(parents=True, exist_ok=True)
@@ -217,8 +227,8 @@ def rebuild_vector_store():
         f.write("=" * 70 + "\n\n")
         
         f.write(f"Total Datasets Attempted: {len(datasets) + 1}\n")  # +1 for Factbook
-        f.write(f"Successfully Ingested: {success_count + (1 if 'SUCCESS: CIA World Factbook' in ingestion_log[-1] else 0)}\n")
-        f.write(f"Failed: {len(datasets) + 1 - success_count - (1 if 'SUCCESS: CIA World Factbook' in ingestion_log[-1] else 0)}\n\n")
+        f.write(f"Successfully Ingested: {success_count + (1 if any('SUCCESS: CIA World Factbook' in log for log in ingestion_log) else 0)}\n")
+        f.write(f"Failed: {len(datasets) + 1 - success_count - (1 if any('SUCCESS: CIA World Factbook' in log for log in ingestion_log) else 0)}\n\n")
         
         f.write("=" * 70 + "\n")
         f.write("DETAILED STATUS\n")
@@ -231,7 +241,7 @@ def rebuild_vector_store():
 
     # Summary
     print("=" * 70)
-    print(f"✅ REBUILD COMPLETE: {success_count}/{len(datasets)} datasets ingested (plus Factbook JSON)")
+    print(f"✅ REBUILD COMPLETE: {success_count}/{len(datasets)} datasets ingested (plus Factbook chunked)")
     print("=" * 70)
     
     if success_count > 0:
